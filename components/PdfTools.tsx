@@ -3,9 +3,10 @@ import {
   Merge, Split, Shrink, Image, FileText, FileOutput, FileInput, 
   Wand2, X, Upload, Plus, Trash2, ArrowUp, ArrowDown, Zap, FileImage, Files, Settings
 } from 'lucide-react';
-import { analyzePdfContent, helperFileToBase64, convertPdfToWordHtml } from '../services/geminiService';
+import { analyzePdfContent, helperFileToBase64, convertPdfToWordHtml, enhanceHtmlForPdf } from '../services/geminiService';
 import { mergePdfs, splitPdfToZip, pdfToImagesZip, pdfsToImagesZip, imagesToPdf, compressPdf, downloadBlob, getPdfPageCount, pdfToSinglePageImage } from '../services/pdfUtils';
 import { ToolDef } from '../types';
+import * as mammoth from 'mammoth';
 
 interface PdfToolsProps {
   // empty
@@ -81,18 +82,68 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
     setResultMessage('');
 
     try {
-      // Simulation for MS Word to PDF (still simulation as per original request to only change PDF to Word)
       if (activeTool.id === 'word-to-pdf') {
-        let currentProgress = 0;
-        const interval = setInterval(() => {
-            currentProgress += 5;
-            setProgress(currentProgress);
-            if (currentProgress >= 100) {
-                clearInterval(interval);
-                setIsProcessing(false);
-                setResultMessage("This is a demo feature. File processed successfully!");
+        setProgress(15);
+        setResultMessage("Reading MS Word Document Structure...");
+        
+        // Strict file check to avoid JSZip "central directory" errors
+        if (!files[0].name.toLowerCase().endsWith('.docx')) {
+             throw new Error("Invalid file format. Only modern .docx files are supported. Legacy .doc files cannot be processed.");
+        }
+
+        const arrayBuffer = await files[0].arrayBuffer();
+        let rawHtml = "";
+
+        try {
+            const result = await mammoth.convertToHtml({ arrayBuffer });
+            rawHtml = result.value;
+            if (!rawHtml) throw new Error("Empty document.");
+        } catch (e: any) {
+            console.error("Mammoth Error", e);
+            if (e.message && e.message.includes("end of central directory")) {
+                throw new Error("The file appears to be corrupted or is not a valid .docx archive.");
             }
-        }, 100);
+            throw new Error("Failed to read Word document. Ensure it is a valid .docx file.");
+        }
+
+        setProgress(40);
+        setResultMessage("AI Analyzing Layout & Typography...");
+        
+        // AI Enhancement
+        const styledHtml = await enhanceHtmlForPdf(rawHtml);
+
+        setProgress(70);
+        setResultMessage("Rasterizing Vector Layouts & Generating PDF...");
+
+        // Create a temporary container
+        const element = document.createElement('div');
+        element.innerHTML = styledHtml;
+        element.style.width = '800px'; // Force A4-ish width
+        element.style.padding = '40px';
+        element.style.background = 'white';
+        element.style.color = 'black';
+        document.body.appendChild(element);
+
+        const opt = {
+          margin:       0.5,
+          filename:     `${files[0].name.replace('.docx', '').replace('.doc', '')}.pdf`,
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true },
+          jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Use global html2pdf
+        if ((window as any).html2pdf) {
+            await (window as any).html2pdf().set(opt).from(element).save();
+            document.body.removeChild(element);
+            
+            setProgress(100);
+            setResultMessage("PDF Generated Successfully! Download starting...");
+            setIsProcessing(false);
+        } else {
+            document.body.removeChild(element);
+            throw new Error("PDF Generation library not loaded.");
+        }
         return;
       }
 
@@ -187,9 +238,9 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
         const analysis = await analyzePdfContent(base64, userPrompt);
         setResultMessage(analysis);
       } 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setResultMessage("Error processing request. Please check file validity.");
+      setResultMessage(err.message || "Error processing request. Please check file validity.");
     } finally {
       if (!['pdf-to-word', 'word-to-pdf'].includes(activeTool.id)) {
         setIsProcessing(false);
@@ -263,13 +314,19 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
                     <Upload className="w-8 h-8 text-[#00f3ff]" />
                   </div>
                   <h4 className="text-lg font-bold text-white mb-1">
-                    {activeTool.id === 'img-to-pdf' ? 'Upload Photos' : 'Upload Document'}
+                    {activeTool.id === 'img-to-pdf' ? 'Upload Photos' : 
+                     activeTool.id === 'word-to-pdf' ? 'Upload MS Word' :
+                     'Upload Document'}
                   </h4>
                   <p className="text-slate-500 text-sm">Drag & drop or click to browse</p>
                   <input 
                     type="file" 
                     ref={fileInputRef}
-                    accept={activeTool.id === 'img-to-pdf' ? "image/jpeg, image/png, image/webp" : ".pdf"} 
+                    accept={
+                        activeTool.id === 'img-to-pdf' ? "image/jpeg, image/png, image/webp" : 
+                        activeTool.id === 'word-to-pdf' ? ".docx" :
+                        ".pdf"
+                    } 
                     multiple={['merge', 'pdf-to-img', 'img-to-pdf'].includes(activeTool.id)} 
                     className="hidden" 
                     onChange={handleFileChange} 
@@ -374,7 +431,7 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
                   {/* Message */}
                   {resultMessage && (
                      <div className={`mt-4 p-4 rounded-xl border ${
-                       resultMessage.includes('Error') 
+                       resultMessage.includes('Error') || resultMessage.includes('corrupted')
                          ? 'bg-red-500/10 border-red-500/50 text-red-400' 
                          : 'bg-[#00f3ff]/10 border-[#00f3ff]/30 text-[#00f3ff]'
                      }`}>
@@ -415,7 +472,8 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
                            {activeTool.id === 'merge' ? 'MERGE FILES' : 
                             activeTool.id === 'compress' ? 'COMPRESS NOW' : 
                             activeTool.id === 'pdf-to-img' ? 'CONVERT ALL' : 
-                            activeTool.id === 'img-to-pdf' ? 'CREATE PDF' : 'START PROCESSING'} 
+                            activeTool.id === 'img-to-pdf' ? 'CREATE PDF' : 
+                            activeTool.id === 'word-to-pdf' ? 'CONVERT TO PDF' : 'START PROCESSING'} 
                            <Zap className="w-5 h-5 fill-current" />
                         </>
                       )}

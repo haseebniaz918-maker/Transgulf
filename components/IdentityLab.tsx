@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Sparkles, Fingerprint, Download, RefreshCw, X, Camera, ArrowRight } from 'lucide-react';
+import { Upload, Sparkles, Fingerprint, Download, RefreshCw, X, Camera, ArrowRight, AlertCircle } from 'lucide-react';
 import { generateIdentityPhoto, helperFileToBase64 } from '../services/geminiService';
 
 export const IdentityLab: React.FC = () => {
@@ -7,6 +7,7 @@ export const IdentityLab: React.FC = () => {
   const [generatedImageBase64, setGeneratedImageBase64] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const themeColor = "#ff00ff"; // Pink
 
@@ -14,6 +15,7 @@ export const IdentityLab: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
       setOriginalImage(e.target.files[0]);
       setGeneratedImageBase64(null);
+      setErrorMessage(null);
     }
   };
 
@@ -22,6 +24,7 @@ export const IdentityLab: React.FC = () => {
 
     setIsProcessing(true);
     setScanProgress(0);
+    setErrorMessage(null);
 
     // Simulate scanning progress visually while waiting
     const progressInterval = setInterval(() => {
@@ -44,9 +47,9 @@ export const IdentityLab: React.FC = () => {
         setIsProcessing(false);
       }, 500);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Failed to process image. Please try again.");
+      setErrorMessage(error.message || "Failed to process image. Please try again.");
       setIsProcessing(false);
       clearInterval(progressInterval);
     }
@@ -131,7 +134,7 @@ export const IdentityLab: React.FC = () => {
               )}
 
               <button 
-                onClick={() => setOriginalImage(null)}
+                onClick={() => { setOriginalImage(null); setErrorMessage(null); }}
                 className="absolute top-4 right-4 bg-black/60 hover:bg-red-500 text-white p-2 rounded-full transition-colors z-30"
                 disabled={isProcessing}
               >
@@ -139,13 +142,20 @@ export const IdentityLab: React.FC = () => {
               </button>
             </div>
 
+            {errorMessage && (
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-200 flex items-center gap-3 max-w-md">
+                    <AlertCircle className="w-6 h-6 flex-shrink-0" />
+                    <p className="text-sm">{errorMessage}</p>
+                </div>
+            )}
+
             {!isProcessing && (
               <button 
                 onClick={processImage}
                 className="px-12 py-4 bg-[#ff00ff] hover:bg-[#d900d9] text-black font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(255,0,255,0.4)] hover:shadow-[0_0_30px_rgba(255,0,255,0.6)] transition-all transform hover:-translate-y-1 flex items-center gap-3"
               >
                 <Sparkles className="w-6 h-6 fill-black" />
-                ENHANCE IDENTITY
+                {errorMessage ? 'TRY AGAIN' : 'ENHANCE IDENTITY'}
               </button>
             )}
 
@@ -199,7 +209,7 @@ export const IdentityLab: React.FC = () => {
 
              <div className="flex gap-4">
                  <button 
-                    onClick={() => { setGeneratedImageBase64(null); setOriginalImage(null); }}
+                    onClick={() => { setGeneratedImageBase64(null); setOriginalImage(null); setErrorMessage(null); }}
                     className="px-6 py-3 border border-pink-500/30 text-pink-500 hover:bg-pink-500/10 rounded-xl font-bold transition-all flex items-center gap-2"
                  >
                     <RefreshCw className="w-5 h-5" /> New Scan

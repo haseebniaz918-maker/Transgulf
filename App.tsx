@@ -4,6 +4,8 @@ import { PdfTools } from './components/PdfTools';
 import { Intro } from './components/Intro';
 import { AiSection } from './components/AiSection';
 import { IdentityLab } from './components/IdentityLab';
+import { CvForge } from './components/CvForge';
+import { DocuScan } from './components/DocuScan';
 import { Section } from './types';
 
 export default function App() {
@@ -11,7 +13,6 @@ export default function App() {
   const [activeSection, setActiveSection] = useState<Section>(Section.PDF_TOOLS);
 
   // Render the appropriate component based on section
-  // For demo purposes, we will reuse AiSection for the AI-based tabs and PdfTools for the main tab
   const renderContent = () => {
     switch (activeSection) {
       case Section.PDF_TOOLS:
@@ -19,9 +20,9 @@ export default function App() {
       case Section.IDENTITY_LAB:
         return <IdentityLab />;
       case Section.CV_FORGE:
-        return <AiSection type={Section.AI_WRITER} />;
+        return <CvForge />;
       case Section.DOCUSCAN_AI:
-        return <AiSection type={Section.IMAGE_TOOLS} />;
+        return <DocuScan />;
       case Section.WAFID_INTEL:
          return <AiSection type={Section.CODE_STUDIO} />;
       default:
