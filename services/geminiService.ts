@@ -244,277 +244,62 @@ export const enhanceHtmlForPdf = async (rawHtml: string): Promise<string> => {
     }
 };
 
-interface TemplateConfig {
-    styleName: string;
-    description: string;
-    cssInstructions: string;
-}
-
-const getTemplateInstructions = (templateId: string): TemplateConfig => {
-    switch (templateId) {
-        case 'classic-harvard':
-            return {
-                styleName: "Classic Harvard / Ivy League",
-                description: "Timeless, serif-heavy, center-aligned header, black & white.",
-                cssInstructions: `
-                    /* HARVARD STYLE */
-                    body { font-family: 'Times New Roman', serif !important; color: #000; background: #fff; }
-                    .main-container { padding: 40px 50px; }
-                    .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 25px; margin-bottom: 30px; }
-                    h1 { font-size: 32pt; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; }
-                    .contact-info { font-style: italic; font-size: 11pt; margin-top: 5px; }
-                    .section { margin-bottom: 25px; }
-                    .section-title { font-size: 14pt; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000; margin-bottom: 15px; padding-bottom: 3px; }
-                    .job-title { font-weight: bold; font-size: 12pt; }
-                    .job-meta { float: right; font-style: italic; }
-                    ul { margin-top: 5px; padding-left: 20px; }
-                    li { margin-bottom: 4px; line-height: 1.5; font-size: 11pt; }
-                    .photo-container { display: flex; justify-content: center; margin-bottom: 15px; }
-                    img { border: 1px solid #000; padding: 3px; }
-                `
-            };
-        case 'modern-silicon':
-            return {
-                styleName: "Silicon Valley Tech",
-                description: "Sidebar layout, modern sans-serif, blue accents.",
-                cssInstructions: `
-                    /* SILICON VALLEY STYLE */
-                    body { font-family: 'Inter', 'Segoe UI', sans-serif !important; margin: 0; background: #fff; }
-                    .main-container { display: flex; height: 100vh; width: 100%; padding: 0; }
-                    .sidebar { width: 32%; background: #f1f5f9; padding: 40px 25px; border-right: 1px solid #cbd5e1; box-sizing: border-box; }
-                    .content { width: 68%; padding: 40px 35px; box-sizing: border-box; background: #fff; }
-                    h1 { color: #1e293b; font-weight: 800; font-size: 28pt; line-height: 1.1; margin-bottom: 5px; }
-                    .role-title { color: #2563eb; font-size: 14pt; font-weight: 600; margin-bottom: 30px; }
-                    .section-title { color: #0f172a; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #2563eb; padding-bottom: 5px; margin: 30px 0 15px 0; font-size: 11pt; }
-                    .sidebar .section-title { color: #334155; border-bottom-color: #94a3b8; }
-                    li { margin-bottom: 6px; color: #334155; font-size: 10pt; line-height: 1.5; }
-                    .photo-container { text-align: center; margin-bottom: 30px; }
-                    img { border-radius: 50%; border: 4px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-                `
-            };
-        case 'executive-slate':
-            return {
-                styleName: "Executive Slate",
-                description: "Corporate, top header block, grey tones.",
-                cssInstructions: `
-                    /* EXECUTIVE STYLE */
-                    body { font-family: 'Georgia', serif; background: #fff; color: #333; }
-                    .header-block { background: #334155; color: white; padding: 40px; text-align: left; display: flex; align-items: center; justify-content: space-between; }
-                    .header-text { width: 70%; }
-                    h1 { margin: 0; font-size: 30pt; font-weight: normal; }
-                    .subtitle { color: #cbd5e1; font-size: 14pt; margin-top: 5px; }
-                    .main-container { padding: 40px; display: flex; gap: 40px; }
-                    .left-col { width: 65%; }
-                    .right-col { width: 30%; border-left: 1px solid #e2e8f0; padding-left: 30px; }
-                    .section-title { font-family: 'Arial', sans-serif; font-weight: bold; color: #334155; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; }
-                    .job-item { margin-bottom: 20px; }
-                    .job-title { font-weight: bold; font-size: 12pt; color: #0f172a; }
-                `
-            };
-        case 'euro-minimalist':
-            return {
-                styleName: "Swiss / Euro Minimalist",
-                description: "Helvetica, grid-based, bold typography, extreme whitespace.",
-                cssInstructions: `
-                    /* SWISS STYLE */
-                    body { font-family: 'Helvetica', 'Arial', sans-serif; color: #000; }
-                    .main-container { padding: 50px; display: grid; grid-template-columns: 150px 1fr; gap: 40px; }
-                    .header-name { grid-column: 1 / -1; font-size: 42pt; font-weight: 900; letter-spacing: -2px; line-height: 0.9; margin-bottom: 50px; border-bottom: 4px solid #000; padding-bottom: 20px; }
-                    .label { font-weight: bold; font-size: 10pt; text-transform: uppercase; margin-top: 5px; }
-                    .content-block { margin-bottom: 30px; }
-                    p, li { font-size: 11pt; line-height: 1.4; }
-                    img { width: 100%; filter: grayscale(100%); }
-                `
-            };
-        case 'creative-dark':
-            return {
-                styleName: "Creative Dark Mode",
-                description: "Dark background, gold accents, 2-column.",
-                cssInstructions: `
-                    /* DARK MODE */
-                    body { background-color: #1a202c; color: #e2e8f0; font-family: 'Inter', sans-serif; }
-                    .main-container { padding: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-                    .header { grid-column: span 2; border-bottom: 1px solid #4a5568; padding-bottom: 30px; margin-bottom: 20px; display: flex; align-items: center; gap: 30px; }
-                    h1 { color: #fff; font-size: 36pt; margin: 0; }
-                    .accent { color: #f59e0b; } /* Gold */
-                    .section-title { color: #f59e0b; font-size: 12pt; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin-top: 30px; margin-bottom: 15px; }
-                    .photo { border-radius: 12px; border: 2px solid #f59e0b; }
-                    li { color: #cbd5e1; margin-bottom: 8px; }
-                `
-            };
-        case 'startup-vibrant':
-             return {
-                styleName: "Startup Vibrant",
-                description: "Gradient header, 3-column skills, fresh fonts.",
-                cssInstructions: `
-                    /* STARTUP STYLE */
-                    body { font-family: 'Montserrat', sans-serif; color: #333; }
-                    .header { background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%); color: white; padding: 40px; text-align: center; }
-                    h1 { font-size: 32pt; font-weight: 800; margin: 0; }
-                    .main-container { padding: 30px; }
-                    .grid-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
-                    .section-title { font-weight: 800; color: #8b5cf6; font-size: 14pt; margin-bottom: 15px; }
-                    .skill-tag { display: inline-block; background: #f3e8ff; color: #7e22ce; padding: 4px 10px; border-radius: 6px; font-size: 9pt; margin: 2px; font-weight: bold; }
-                    img { border-radius: 50%; border: 4px solid rgba(255,255,255,0.5); width: 140px; height: 140px; margin-top: -70px; background: white; }
-                `
-             };
-         case 'global-executive':
-            return {
-                styleName: "Global Executive",
-                description: "Navy background header, gold text, dense layout.",
-                cssInstructions: `
-                    /* GLOBAL EXEC */
-                    body { font-family: 'Garamond', 'Georgia', serif; background: #fff; }
-                    .header-strip { background: #0f172a; padding: 40px; color: #fff; display: flex; align-items: center; justify-content: space-between; border-bottom: 4px solid #d4af37; }
-                    h1 { font-size: 28pt; letter-spacing: 1px; font-weight: normal; margin: 0; }
-                    .role { color: #d4af37; font-size: 14pt; text-transform: uppercase; letter-spacing: 2px; margin-top: 5px; }
-                    .main-container { display: flex; }
-                    .left-main { width: 70%; padding: 30px; }
-                    .right-sidebar { width: 30%; background: #f8fafc; padding: 30px; border-left: 1px solid #e2e8f0; }
-                    .section-title { font-family: 'Arial', sans-serif; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #0f172a; padding-bottom: 5px; margin: 25px 0 15px 0; font-size: 11pt; color: #0f172a; }
-                    p { text-align: justify; line-height: 1.5; }
-                `
-            };
-        case 'legal-professional':
-            return {
-                styleName: "Legal Professional",
-                description: "Single column, strictly black text, formal lines.",
-                cssInstructions: `
-                    /* LEGAL STYLE */
-                    body { font-family: 'Cambria', 'Times New Roman', serif; color: #000; padding: 40px 60px; }
-                    .header { text-align: center; margin-bottom: 40px; }
-                    h1 { font-size: 26pt; text-transform: uppercase; letter-spacing: 3px; border-bottom: 1px solid #000; padding-bottom: 20px; display: inline-block; width: 100%; margin-bottom: 10px; }
-                    .contact-line { font-family: 'Arial', sans-serif; font-size: 9pt; text-transform: uppercase; letter-spacing: 1px; }
-                    .section-header { font-family: 'Arial', sans-serif; font-size: 11pt; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000; margin: 25px 0 15px 0; }
-                    .entry { margin-bottom: 15px; }
-                    .entry-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 12pt; }
-                    .entry-sub { font-style: italic; margin-bottom: 5px; }
-                    ul { margin: 5px 0; padding-left: 18px; }
-                `
-            };
-         case 'tech-modern':
-            return {
-                styleName: "Tech Modern",
-                description: "Monospace headers, emerald green accents.",
-                cssInstructions: `
-                    /* TECH STYLE */
-                    body { font-family: 'Inter', sans-serif; color: #111; }
-                    h1, h2, h3, .mono { font-family: 'Courier New', monospace; }
-                    .header { padding: 40px; border-bottom: 4px solid #10b981; margin-bottom: 30px; }
-                    h1 { font-size: 34pt; letter-spacing: -2px; font-weight: bold; }
-                    .highlight { color: #10b981; }
-                    .main-container { padding: 0 40px 40px 40px; display: grid; grid-template-columns: 2fr 1fr; gap: 40px; }
-                    .section-title { font-size: 16pt; font-weight: bold; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-                    .section-title::before { content: '>'; color: #10b981; font-weight: bold; }
-                    .tech-tag { border: 1px solid #10b981; color: #065f46; padding: 4px 8px; font-family: monospace; font-size: 10pt; display: inline-block; margin: 3px; border-radius: 4px; }
-                `
-            };
-        case 'nordic-clean':
-             return {
-                styleName: "Nordic Clean",
-                description: "Lots of white space, soft grey text, centered.",
-                cssInstructions: `
-                    /* NORDIC STYLE */
-                    body { font-family: 'Lato', sans-serif; color: #475569; background: #fff; }
-                    .main-container { max-width: 800px; margin: 0 auto; padding: 50px; text-align: center; }
-                    h1 { font-weight: 300; font-size: 36pt; color: #000; margin-bottom: 10px; letter-spacing: 2px; }
-                    .role { text-transform: uppercase; letter-spacing: 3px; font-size: 10pt; color: #94a3b8; margin-bottom: 40px; }
-                    .photo { width: 160px; height: 160px; border-radius: 50%; margin: 0 auto 30px auto; object-fit: cover; display: block; }
-                    .section-title { font-weight: 400; font-size: 12pt; text-transform: uppercase; letter-spacing: 2px; margin-top: 40px; margin-bottom: 20px; color: #000; position: relative; display: inline-block; }
-                    .section-title::after { content: ''; display: block; width: 40px; height: 1px; bg: #ccc; margin: 10px auto 0 auto; background: #cbd5e1; }
-                    p { line-height: 1.8; font-weight: 300; }
-                `
-             };
-        case 'creative-portfolio':
-            return {
-                styleName: "Creative Portfolio",
-                description: "Split header 50/50, bold pink color.",
-                cssInstructions: `
-                    /* CREATIVE STYLE */
-                    body { font-family: 'Raleway', sans-serif; margin: 0; }
-                    .header-split { display: flex; height: 250px; }
-                    .header-left { width: 50%; background: #000; color: white; display: flex; align-items: center; justify-content: center; padding: 40px; text-align: right; }
-                    .header-right { width: 50%; background: #f43f5e; display: flex; align-items: center; justify-content: center; }
-                    .main-container { padding: 50px; columns: 2; column-gap: 50px; }
-                    h1 { font-family: 'Playfair Display', serif; font-size: 36pt; line-height: 1; margin: 0; }
-                    .section-title { font-weight: 900; font-size: 18pt; margin-bottom: 15px; color: #f43f5e; break-after: avoid; }
-                    .item { break-inside: avoid; margin-bottom: 25px; }
-                    img { width: 180px; height: 180px; border-radius: 50%; border: 10px solid rgba(255,255,255,0.2); }
-                `
-            };
-        case 'medical-fellow':
-            return {
-                styleName: "Medical Fellow",
-                description: "Clinical, left border accent, clean.",
-                cssInstructions: `
-                    /* MEDICAL STYLE */
-                    body { font-family: 'Verdana', sans-serif; color: #1e293b; padding: 0; }
-                    .sidebar-stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 60px; background: #0284c7; }
-                    .main-content { margin-left: 60px; padding: 50px; }
-                    .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 30px; margin-bottom: 30px; }
-                    h1 { color: #0284c7; font-size: 32pt; margin: 0; }
-                    .section-title { color: #0284c7; font-size: 14pt; font-weight: bold; text-transform: uppercase; margin-top: 30px; margin-bottom: 15px; display: flex; align-items: center; }
-                    .section-title::before { content: ''; display: inline-block; width: 8px; height: 8px; background: #0284c7; margin-right: 10px; }
-                    li { margin-bottom: 8px; line-height: 1.5; }
-                `
-            };
-        default:
-            return {
-                styleName: "Professional Standard",
-                description: "Balanced, standard professional CV.",
-                cssInstructions: "body { font-family: 'Times New Roman', serif; padding: 40px; }"
-            };
-    }
-};
-
 export const generateCvHtml = async (cvData: any): Promise<string> => {
   try {
     const ai = getClient();
-    const model = 'gemini-2.5-flash';
+    const model = 'gemini-3-pro-preview';
 
     const photoBase64 = cvData.photoBase64 || "";
-    const templateId = cvData.templateId || "classic-harvard";
-    const templateConfig = getTemplateInstructions(templateId);
+    // Random Layout Logic passed from Frontend
+    const layoutId = cvData.layoutId || Math.floor(Math.random() * 100) + 1;
+    const jobRole = cvData.jobRole || "Professional";
     
     const aiAnalysisData = { 
         ...cvData, 
-        photoBase64: photoBase64 ? "Exists" : null 
+        photoBase64: photoBase64 ? "EXISTS" : null 
     };
 
     const prompt = `
-    You are a World-Class Creative Director & CV Architect.
+    You are a World-Class CV Architect.
     
-    **Core Task**: Create a visually unique, professional SINGLE-PAGE HTML CV. 
-    **Constraint**: The entire content MUST fit perfectly on one A4 page (210mm x 297mm). No second page allowed.
-
-    **SELECTED TEMPLATE STYLE**: "${templateConfig.styleName}"
-    **STYLE DESCRIPTION**: ${templateConfig.description}
+    **TASK**: Generate a professional HTML CV for a candidate applying for the role of: **${jobRole}**.
+    **SELECTED LAYOUT ID**: Master Template #${layoutId} (Use a text-heavy, clean, professional layout).
     
-    **CRITICAL RENDER RULES (CSS INJECTION)**:
-    - Use internal <style> block.
-    - **INJECT THIS CSS**: 
-      ${templateConfig.cssInstructions}
-    - **CONTRAST**: Body text must be #000000 or #1a202c. Light gray is forbidden for body text.
-    - **PHOTO**: If a photo exists, use strictly: \`width: 35mm; height: 35mm; object-fit: cover; display: block;\` (plus specific border styles from CSS rules).
-    - **LAYOUT**: Use <div class="main-container">, <div class="header">, <div class="sidebar">, etc., matching the CSS rules provided above.
-    - **SPACING**: Ensure the page is filled. If content is short, increase line-height to 1.6 or 1.8.
+    **CRITICAL REQUIREMENT - SINGLE PAGE**:
+    - The output MUST fit on strictly **ONE PAGE** (A4).
+    - Use CSS: \`overflow: hidden; max-height: 295mm;\` in the \`.safe-zone\` container to cut off any second page.
+    - Adjust font-sizes slightly if content is too long.
+    
+    **CRITICAL REQUIREMENT - TYPOGRAPHY**:
+    - **Font**: Use **'Times New Roman', serif** for EVERYTHING.
+    - Make it attractive by using **Bold** headers, *Italics* for meta-data, and ALL-CAPS for section titles.
+    - Use \`<hr>\` or border-bottoms to separate sections cleanly.
 
-    **CONTENT EXPANSION PROTOCOL (THE "BULKY" RULE)**:
-    - The user input provided below might be sparse (e.g., just a name "jhjkhjkJJH"). 
-    - **YOU MUST EXPAND IT**. 
-    - If the name is gibberish, fix it to "John Doe (Placeholder)".
-    - If no skills are provided, INVENT 8-10 professional skills matching the job title or general professional skills.
-    - If no summary is provided, WRITE a 4-line professional summary.
-    - If experience is short, GENERATE 4-5 bullet points of responsibilities for each role.
-    - **GOAL**: The CV must look DENSE and PROFESSIONAL, even with bad input.
+    **AUTO-CONTENT GENERATION (BE CREATIVE)**:
+    1. **CAREER OBJECTIVE**: Write a strong, 3-line professional summary tailored specifically to **${jobRole}**.
+    2. **SKILLS**: Generate a 'Skills' section with 8-12 hard and soft skills relevant to **${jobRole}**. Display them in a 2-column list or comma-separated block.
+    3. **RESPONSIBILITIES**: For every experience entry provided, generate 3-4 professional bullet points of responsibilities typical for that role. Do NOT leave them empty.
 
+    **MANDATORY DATA (ALL MUST BE INCLUDED)**:
+    - Name (Huge Typography, Centered or Left)
+    - Personal Details Block (Father Name, Religion, Nationality, DOB, CNIC, Passport No/Issue/Expiry, Place of Birth, Marital Status).
+    - Address, Phone, Email.
+    - Education (Degree, School, Years).
+    - Experience (Designation, Company, Years) + **Generated Responsibilities**.
+    
+    **CSS INJECTION**:
+    - Include a \`<style>\` block.
+    - \`* { font-family: 'Times New Roman', serif !important; box-sizing: border-box; margin: 0; padding: 0; }\`
+    - \`body { background: white; width: 210mm; height: 297mm; overflow: hidden; }\`
+    - \`.safe-zone { padding: 15mm; width: 100%; height: 296mm; display: flex; flex-direction: column; overflow: hidden; }\`
+    - \`.section-header { text-transform: uppercase; font-weight: bold; border-bottom: 2px solid #000; margin-top: 15px; margin-bottom: 8px; font-size: 14px; }\`
+    - \`li { font-size: 12px; margin-bottom: 2px; }\`
+    
     **DATA**:
     ${JSON.stringify(aiAnalysisData, null, 2)}
 
     **OUTPUT**:
-    - Return ONLY valid HTML5 code starting with <!DOCTYPE html>.
-    - Embed the CSS in <style> tags.
-    - **PHOTO SRC**: Set <img src="[[PHOTO_PLACEHOLDER]]" />.
+    Return ONLY valid HTML5 code starting with <!DOCTYPE html>.
     `;
 
     const response = await ai.models.generateContent({
@@ -525,16 +310,90 @@ export const generateCvHtml = async (cvData: any): Promise<string> => {
     let text = response.text || "";
     text = text.replace(/^```html/, '').replace(/```$/, '').trim();
     
+    const placeholderRegex = /\[\[PHOTO_PLACEHOLDER\]\]|"%5B%5BPHOTO_PLACEHOLDER%5D%5D"|%5B%5BPHOTO_PLACEHOLDER%5D%5D/g;
+
     if (photoBase64) {
-        text = text.replace('[[PHOTO_PLACEHOLDER]]', `data:image/jpeg;base64,${photoBase64}`);
-        text = text.replace('"%5B%5BPHOTO_PLACEHOLDER%5D%5D"', `data:image/jpeg;base64,${photoBase64}`);
-        text = text.replace('%5B%5BPHOTO_PLACEHOLDER%5D%5D', `data:image/jpeg;base64,${photoBase64}`);
+        const dataUri = `data:image/jpeg;base64,${photoBase64}`;
+        text = text.replace(placeholderRegex, dataUri);
+    } else {
+        const fallback = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI1MCIgZmlsbD0iI2UzZTNlMyIvPjwvc3ZnPg==";
+        text = text.replace(placeholderRegex, fallback);
     }
     
     return text;
   } catch (error) {
     console.error("CV Generation Error:", error);
     throw new Error("Failed to generate CV template.");
+  }
+};
+
+export const generateAdHtml = async (adData: any): Promise<string> => {
+  try {
+    const ai = getClient();
+    const model = 'gemini-3-pro-preview';
+    const seed = Date.now();
+
+    const prompt = `
+    You are an Expert Advertising Designer for Recruitment Agencies.
+    
+    **TASK**: Create a visually stunning, Vertical (9:16 Aspect Ratio) Job Advertisement HTML.
+    
+    **DESIGN THEME**: "ULTRA-BOLD & VISUAL".
+    - **TYPOGRAPHY**: Job Titles MUST be HUGE (at least 28px), BOLD, and High Contrast.
+    - **IMAGES**: Images must be LARGE and prominent (width: 100px+ or full width cards).
+    - **VISIBILITY**: The text and images should be the first thing the user sees. Maximum readability.
+    - Vary the layout structure based on this seed ID: ${seed}.
+    - The design MUST be decent, trustworthy, and eye-catching.
+    - Use gradients, shadows, and card layouts to make vacancies pop.
+    
+    **INPUT DATA**:
+    - **Country**: ${adData.country} (FEATURE THIS PROMINENTLY, ADD FLAG ICON IF POSSIBLE)
+    - **Company**: ${adData.company || "Leading Company"}
+    - **Vacancies**: ${JSON.stringify(adData.jobs)}
+
+    **MANDATORY REQUIREMENTS**:
+    1. **CONTAINER**: 
+       - \`width: 100%; height: 100%;\` (Targeting a 360x640px viewport).
+       - Use \`display: flex; flex-direction: column;\`.
+    2. **IMAGES (AI MATCHING)**: 
+       - For EACH vacancy, you MUST include a relevant image.
+       - **CRITICAL**: Use this exact URL format for images:
+         \`https://image.pollinations.ai/prompt/{visual_description_encoded}?width=400&height=400&nologo=true&seed=${seed}&model=flux\`
+       - **IMPORTANT**: 
+         - Replace spaces with \`%20\` in the visual description.
+         - Keep descriptions concise (max 5 words).
+         - Example: \`https://image.pollinations.ai/prompt/construction%20worker%20site?width=400&height=400&nologo=true&seed=${seed}&model=flux\`
+       - **FALLBACK**: Add \`onerror="this.onerror=null; this.src='https://placehold.co/400x400/1e293b/00f3ff?text=Job+Vacancy';"\` to every \`<img>\` tag to prevent broken images.
+       - Style the images: LARGE, Rounded corners, shadow.
+    3. **FOOTER (STRICTLY ENFORCED)**:
+       - You MUST include a fixed footer at the bottom with EXACTLY this text and hierarchy:
+       - **Transgulf International** (Large/Bold)
+       - **Rana Trade Center Attock City**
+       - **Phone No: 0572603447**
+       - "Visit Office if you are interested"
+    4. **LAYOUT**:
+       - Header: Country/Company + Title "URGENTLY REQUIRED" (HUGE FONT).
+       - Body: Grid or List of vacancies. Each item shows: LARGE Image + HUGE Job Title.
+       - Footer: The mandatory contact info.
+
+    **OUTPUT**:
+    - Return ONLY valid HTML code.
+    - Embed CSS in \`<style>\` tag.
+    - Use Google Fonts (Montserrat, Poppins, or Bebas Neue).
+    `;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+    });
+
+    let text = response.text || "";
+    text = text.replace(/^```html/, '').replace(/```$/, '').trim();
+    
+    return text;
+  } catch (error) {
+    console.error("Ad Gen Error:", error);
+    throw new Error("Failed to generate Ad.");
   }
 };
 

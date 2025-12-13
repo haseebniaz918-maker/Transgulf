@@ -22,10 +22,10 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
   const [outputFormat, setOutputFormat] = useState<string>('image/jpeg');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Styling constants to match the design
-  const cardBaseClass = "bg-[#0f172a] border border-[#1e293b] hover:border-[#00f3ff] rounded-2xl p-6 flex flex-col gap-4 transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,243,255,0.15)] group cursor-pointer h-full relative overflow-hidden";
-  const iconContainerClass = "w-12 h-12 rounded-xl bg-[#1e293b] flex items-center justify-center group-hover:bg-[#00f3ff]/10 transition-colors";
-  const iconClass = "w-6 h-6 text-[#00f3ff] transition-transform group-hover:scale-110";
+  // Styling constants with INTENSE NEON effects
+  const cardBaseClass = "bg-[#0f172a]/80 backdrop-blur-md border border-[#1e293b] rounded-2xl p-6 flex flex-col gap-4 transition-all duration-300 group cursor-pointer h-full relative overflow-hidden hover:-translate-y-2 hover:border-[#00f3ff] hover:shadow-[0_0_25px_rgba(0,243,255,0.4)]";
+  const iconContainerClass = "w-16 h-16 rounded-2xl bg-[#020617] border border-[#00f3ff]/20 flex items-center justify-center group-hover:bg-[#00f3ff] group-hover:border-[#00f3ff] transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.8)] group-hover:shadow-[0_0_30px_#00f3ff]";
+  const iconClass = "w-8 h-8 text-[#00f3ff] transition-all duration-300 group-hover:text-black group-hover:scale-110";
 
   const tools: ToolDef[] = [
     { id: 'merge', title: 'Merge PDF', description: 'Combine multiple PDFs into one.', icon: Merge, color: '#00f3ff', neonClass: '', action: () => {} },
@@ -253,8 +253,11 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
     <div className="w-full max-w-7xl mx-auto px-6 py-12 pb-32">
       {/* Hero Text */}
       <div className="text-center mb-16 animate-slide-up">
-        <p className="text-slate-400 text-lg mb-2 tracking-wide">Professional PDF tools powered by WebAssembly.</p>
-        <div className="h-1 w-20 bg-[#00f3ff] mx-auto rounded-full shadow-[0_0_15px_#00f3ff]"></div>
+        <h1 className="text-4xl font-display font-bold text-white mb-2 tracking-tighter">
+          PDF <span className="text-[#00f3ff] drop-shadow-[0_0_15px_rgba(0,243,255,0.8)]">NEON</span> TOOLS
+        </h1>
+        <p className="text-slate-400 text-lg mb-6 tracking-wide font-light">Powered by WebAssembly & Pro AI Models</p>
+        <div className="h-1 w-32 bg-[#00f3ff] mx-auto rounded-full shadow-[0_0_20px_#00f3ff] animate-pulse"></div>
       </div>
 
       {/* Grid Layout */}
@@ -266,40 +269,47 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
             className={`${cardBaseClass} animate-fade-in`}
             style={{ animationDelay: `${idx * 50}ms` }}
           >
+            {/* Background Glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#00f3ff]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            
             <div className={iconContainerClass}>
               <tool.icon className={iconClass} />
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-white mb-1">{tool.title}</h3>
-              <p className="text-sm text-slate-400 font-medium leading-relaxed">{tool.description}</p>
+            <div className="relative z-10">
+              <h3 className="text-xl font-bold text-white mb-1 group-hover:text-[#00f3ff] transition-colors drop-shadow-md">{tool.title}</h3>
+              <p className="text-sm text-slate-400 font-medium leading-relaxed group-hover:text-slate-300 transition-colors">{tool.description}</p>
             </div>
-            {/* Subtle glow effect */}
-            <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-[#00f3ff]/5 rounded-full blur-2xl group-hover:bg-[#00f3ff]/10 transition-colors"></div>
+            
+            {/* Corner Accent */}
+            <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+               <div className="w-2 h-2 bg-[#00f3ff] rounded-full shadow-[0_0_10px_#00f3ff]"></div>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Modal Overlay */}
       {activeTool && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="bg-[#0f172a] border border-[#1e293b] w-full max-w-2xl rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[90vh] animate-pop-in relative">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-fade-in">
+          <div className="bg-[#0f172a] border-2 border-[#00f3ff]/50 w-full max-w-2xl rounded-2xl shadow-[0_0_80px_rgba(0,243,255,0.3)] overflow-hidden flex flex-col max-h-[90vh] animate-pop-in relative">
             
             {/* Modal Header */}
-            <div className="p-6 border-b border-[#1e293b] flex justify-between items-center bg-[#020617]/50">
+            <div className="p-6 border-b border-[#00f3ff]/30 flex justify-between items-center bg-[#00f3ff]/5 relative">
+              <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#00f3ff] to-transparent shadow-[0_0_15px_#00f3ff]"></div>
               <div className="flex items-center gap-4">
-                <div className="p-2.5 bg-[#00f3ff]/10 rounded-lg">
-                   <activeTool.icon className="w-6 h-6 text-[#00f3ff]" />
+                <div className="p-3 bg-[#00f3ff] rounded-xl shadow-[0_0_20px_#00f3ff]">
+                   <activeTool.icon className="w-6 h-6 text-black" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">{activeTool.title}</h3>
-                  <p className="text-xs text-slate-400 uppercase tracking-widest">Workspace Active</p>
+                  <h3 className="text-2xl font-bold text-white tracking-wide">{activeTool.title}</h3>
+                  <p className="text-xs text-[#00f3ff] uppercase tracking-[0.2em] font-bold text-shadow-neon">Active Workspace</p>
                 </div>
               </div>
               <button 
                 onClick={() => setActiveTool(null)} 
-                className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+                className="p-2 text-slate-400 hover:text-[#00f3ff] hover:bg-[#00f3ff]/10 rounded-full transition-colors hover:rotate-90 duration-300"
               >
-                <X className="w-6 h-6" />
+                <X className="w-8 h-8" />
               </button>
             </div>
             
@@ -307,18 +317,18 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
             <div className="p-8 overflow-y-auto">
               {files.length === 0 ? (
                 <div 
-                  className="h-64 border-2 border-dashed border-[#1e293b] rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer group hover:border-[#00f3ff] hover:bg-[#00f3ff]/5"
+                  className="h-64 border-2 border-dashed border-[#1e293b] hover:border-[#00f3ff] rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer group hover:bg-[#00f3ff]/5 relative overflow-hidden"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <div className="w-16 h-16 rounded-full bg-[#1e293b] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <Upload className="w-8 h-8 text-[#00f3ff]" />
+                  <div className="w-24 h-24 rounded-full bg-[#1e293b] border border-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg group-hover:shadow-[0_0_30px_rgba(0,243,255,0.4)] group-hover:bg-[#00f3ff]">
+                    <Upload className="w-10 h-10 text-[#00f3ff] group-hover:text-black transition-colors" />
                   </div>
-                  <h4 className="text-lg font-bold text-white mb-1">
+                  <h4 className="text-xl font-bold text-white mb-2 relative z-10 group-hover:text-[#00f3ff] transition-colors">
                     {activeTool.id === 'img-to-pdf' ? 'Upload Photos' : 
                      activeTool.id === 'word-to-pdf' ? 'Upload MS Word' :
                      'Upload Document'}
                   </h4>
-                  <p className="text-slate-500 text-sm">Drag & drop or click to browse</p>
+                  <p className="text-slate-500 text-sm relative z-10">Drag & drop or click to browse</p>
                   <input 
                     type="file" 
                     ref={fileInputRef}
@@ -337,7 +347,7 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
                   {/* File List */}
                   <div className="space-y-3">
                     {files.map((f, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 rounded-xl border border-[#1e293b] bg-[#020617]/50">
+                      <div key={i} className="flex items-center justify-between p-4 rounded-xl border border-[#1e293b] bg-[#020617]/50 hover:border-[#00f3ff]/50 transition-colors shadow-lg">
                         <div className="flex items-center gap-4">
                           {['merge', 'pdf-to-img', 'img-to-pdf'].includes(activeTool.id) && (
                              <div className="flex flex-col gap-1 text-slate-500">
@@ -354,7 +364,7 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
                             <p className="text-xs text-slate-500">{(f.size / 1024 / 1024).toFixed(2)} MB</p>
                           </div>
                         </div>
-                        <button onClick={() => removeFile(i)} className="text-slate-500 hover:text-red-500 transition-colors">
+                        <button onClick={() => removeFile(i)} className="text-slate-500 hover:text-red-500 transition-colors hover:scale-110">
                           <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
@@ -363,9 +373,9 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
                     {['merge', 'pdf-to-img', 'img-to-pdf'].includes(activeTool.id) && (
                        <button 
                          onClick={() => fileInputRef.current?.click()}
-                         className="w-full py-3 border border-dashed border-[#1e293b] rounded-xl text-slate-400 hover:text-[#00f3ff] hover:border-[#00f3ff] hover:bg-[#00f3ff]/5 transition-all flex items-center justify-center gap-2 text-sm font-bold tracking-widest"
+                         className="w-full py-3 border border-dashed border-[#1e293b] rounded-xl text-slate-400 hover:text-[#00f3ff] hover:border-[#00f3ff] hover:bg-[#00f3ff]/5 transition-all flex items-center justify-center gap-2 text-sm font-bold tracking-widest uppercase"
                        >
-                         <Plus className="w-4 h-4" /> ADD MORE FILES
+                         <Plus className="w-4 h-4" /> Add More Files
                        </button>
                     )}
                   </div>
@@ -377,7 +387,7 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
                          <Settings className="w-4 h-4 text-[#00f3ff]" /> Output Format
                        </h4>
                        <div className="flex gap-4">
-                         <label className="flex items-center gap-2 cursor-pointer">
+                         <label className="flex items-center gap-2 cursor-pointer group">
                             <input 
                               type="radio" 
                               name="format" 
@@ -386,9 +396,9 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
                               onChange={(e) => setOutputFormat(e.target.value)}
                               className="accent-[#00f3ff]"
                             />
-                            <span className="text-sm text-slate-300">JPG (Standard)</span>
+                            <span className="text-sm text-slate-300 group-hover:text-[#00f3ff] transition-colors">JPG (Standard)</span>
                          </label>
-                         <label className="flex items-center gap-2 cursor-pointer">
+                         <label className="flex items-center gap-2 cursor-pointer group">
                             <input 
                               type="radio" 
                               name="format" 
@@ -397,7 +407,7 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
                               onChange={(e) => setOutputFormat(e.target.value)}
                               className="accent-[#00f3ff]"
                             />
-                            <span className="text-sm text-slate-300">PNG (High Quality)</span>
+                            <span className="text-sm text-slate-300 group-hover:text-[#00f3ff] transition-colors">PNG (High Quality)</span>
                          </label>
                        </div>
                      </div>
@@ -413,16 +423,17 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
                         value={aiPrompt}
                         onChange={(e) => setAiPrompt(e.target.value)}
                         placeholder="e.g., Summarize the main points of this document..."
-                        className="w-full bg-[#020617] border border-[#1e293b] rounded-xl p-4 text-white placeholder-slate-600 focus:outline-none focus:border-[#00f3ff] resize-none h-32 transition-colors text-sm"
+                        className="w-full bg-[#020617] border border-[#1e293b] rounded-xl p-4 text-white placeholder-slate-600 focus:outline-none focus:border-[#00f3ff] focus:shadow-[0_0_10px_rgba(0,243,255,0.1)] resize-none h-32 transition-all text-sm"
                       />
                     </div>
                   )}
 
                   {/* Progress Bar */}
                   {isProcessing && (
-                    <div className="w-full bg-[#1e293b] h-1.5 rounded-full overflow-hidden mt-6">
+                    <div className="w-full bg-[#1e293b] h-2 rounded-full overflow-hidden mt-6 relative shadow-[0_0_10px_#00f3ff]">
+                       <div className="absolute inset-0 bg-[#00f3ff]/20 animate-pulse"></div>
                       <div 
-                        className="h-full bg-[#00f3ff] shadow-[0_0_10px_#00f3ff] transition-all duration-100 ease-out"
+                        className="h-full bg-[#00f3ff] shadow-[0_0_20px_#00f3ff] transition-all duration-100 ease-out relative z-10"
                         style={{ width: `${progress}%` }}
                       ></div>
                     </div>
@@ -430,12 +441,15 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
 
                   {/* Message */}
                   {resultMessage && (
-                     <div className={`mt-4 p-4 rounded-xl border ${
+                     <div className={`mt-4 p-4 rounded-xl border animate-slide-up ${
                        resultMessage.includes('Error') || resultMessage.includes('corrupted')
                          ? 'bg-red-500/10 border-red-500/50 text-red-400' 
-                         : 'bg-[#00f3ff]/10 border-[#00f3ff]/30 text-[#00f3ff]'
+                         : 'bg-[#00f3ff]/10 border-[#00f3ff]/50 text-[#00f3ff] shadow-[0_0_20px_rgba(0,243,255,0.2)]'
                      }`}>
-                        <p className="text-sm font-medium">{resultMessage}</p>
+                        <p className="text-sm font-medium flex items-center gap-2">
+                            {resultMessage.includes('Error') ? <Zap className="w-4 h-4 rotate-45" /> : <Zap className="w-4 h-4" />}
+                            {resultMessage}
+                        </p>
                      </div>
                   )}
 
@@ -445,17 +459,17 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
                        <button
                          onClick={() => processFiles('split-pdf')}
                          disabled={isProcessing}
-                         className="py-4 bg-[#0f172a] hover:bg-[#1e293b] border border-[#1e293b] hover:border-[#00f3ff] rounded-xl text-white font-bold transition-all flex flex-col items-center gap-2 group"
+                         className="py-4 bg-[#0f172a] hover:bg-[#00f3ff] hover:text-black border border-[#1e293b] hover:border-[#00f3ff] rounded-xl text-white font-bold transition-all flex flex-col items-center gap-2 group hover:shadow-[0_0_25px_rgba(0,243,255,0.5)]"
                        >
-                         <Files className="w-6 h-6 text-[#00f3ff] group-hover:scale-110 transition-transform" />
+                         <Files className="w-6 h-6 text-[#00f3ff] group-hover:text-black group-hover:scale-110 transition-transform" />
                          <span className="text-xs tracking-wider">SPLIT TO PDFs</span>
                        </button>
                        <button
                          onClick={() => processFiles('split-img')}
                          disabled={isProcessing}
-                         className="py-4 bg-[#0f172a] hover:bg-[#1e293b] border border-[#1e293b] hover:border-[#00f3ff] rounded-xl text-white font-bold transition-all flex flex-col items-center gap-2 group"
+                         className="py-4 bg-[#0f172a] hover:bg-[#00f3ff] hover:text-black border border-[#1e293b] hover:border-[#00f3ff] rounded-xl text-white font-bold transition-all flex flex-col items-center gap-2 group hover:shadow-[0_0_25px_rgba(0,243,255,0.5)]"
                        >
-                         <FileImage className="w-6 h-6 text-[#00f3ff] group-hover:scale-110 transition-transform" />
+                         <FileImage className="w-6 h-6 text-[#00f3ff] group-hover:text-black group-hover:scale-110 transition-transform" />
                          <span className="text-xs tracking-wider">CONVERT TO IMAGES</span>
                        </button>
                      </div>
@@ -463,19 +477,20 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
                     <button 
                       onClick={() => processFiles()}
                       disabled={isProcessing}
-                      className="w-full py-4 mt-4 bg-gradient-to-r from-[#00f3ff] to-[#0066ff] hover:from-[#00c2cc] hover:to-[#0052cc] rounded-xl text-black font-bold text-lg tracking-wide transition-all shadow-[0_0_20px_rgba(0,243,255,0.3)] hover:shadow-[0_0_30px_rgba(0,243,255,0.5)] flex items-center justify-center gap-2"
+                      className="w-full py-5 mt-4 bg-[#00f3ff] hover:bg-[#00c2cc] text-black font-extrabold text-lg tracking-widest rounded-xl transition-all shadow-[0_0_25px_rgba(0,243,255,0.5)] hover:shadow-[0_0_50px_rgba(0,243,255,0.8)] flex items-center justify-center gap-3 hover:-translate-y-1 active:translate-y-0 relative overflow-hidden group"
                     >
+                      <div className="absolute inset-0 bg-white/40 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                       {isProcessing ? (
                         <span className="animate-pulse">PROCESSING...</span>
                       ) : (
-                        <>
+                        <span className="relative z-10 flex items-center gap-2">
                            {activeTool.id === 'merge' ? 'MERGE FILES' : 
                             activeTool.id === 'compress' ? 'COMPRESS NOW' : 
                             activeTool.id === 'pdf-to-img' ? 'CONVERT ALL' : 
                             activeTool.id === 'img-to-pdf' ? 'CREATE PDF' : 
                             activeTool.id === 'word-to-pdf' ? 'CONVERT TO PDF' : 'START PROCESSING'} 
-                           <Zap className="w-5 h-5 fill-current" />
-                        </>
+                           <Zap className="w-6 h-6 fill-black" />
+                        </span>
                       )}
                     </button>
                   )}

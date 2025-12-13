@@ -6,6 +6,7 @@ import { AiSection } from './components/AiSection';
 import { IdentityLab } from './components/IdentityLab';
 import { CvForge } from './components/CvForge';
 import { DocuScan } from './components/DocuScan';
+import { AdsMaker } from './components/AdsMaker';
 import { Section } from './types';
 
 export default function App() {
@@ -23,6 +24,8 @@ export default function App() {
         return <CvForge />;
       case Section.DOCUSCAN_AI:
         return <DocuScan />;
+      case Section.ADS_MAKER:
+        return <AdsMaker />;
       case Section.WAFID_INTEL:
          return <AiSection type={Section.CODE_STUDIO} />;
       default:
