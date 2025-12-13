@@ -1,18 +1,23 @@
-import React, { useState, useRef } from 'react';
-import { Upload, ScanLine, X, Download, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Upload, ScanLine, X, Download, RefreshCw, CheckCircle2, AlertCircle, Layers } from 'lucide-react';
 import { generateEnhancedDocument, helperFileToBase64 } from '../services/geminiService';
+import JSZip from 'jszip';
 
 export const DocuScan: React.FC = () => {
   const [originalImage, setOriginalImage] = useState<File | null>(null);
-  const [processedImageBase64, setProcessedImageBase64] = useState<string | null>(null);
+  const [processedImages, setProcessedImages] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setOriginalImage(e.target.files[0]);
-      setProcessedImageBase64(null);
+      const file = e.target.files[0];
+      if (!file.type.startsWith('image/')) {
+          setErrorMessage("Invalid file type. Please upload a valid image (JPG, PNG).");
+          return;
+      }
+      setOriginalImage(file);
+      setProcessedImages([]);
       setErrorMessage(null);
     }
   };
@@ -24,10 +29,9 @@ export const DocuScan: React.FC = () => {
 
     try {
       const base64 = await helperFileToBase64(originalImage);
-      // AI cleans the doc (crops, flattens, whitens bg, enhances text)
-      // The prompt now strictly enforces "NO MARGIN" output from AI.
-      const cleanDocBase64 = await generateEnhancedDocument(base64, originalImage.type);
-      setProcessedImageBase64(cleanDocBase64);
+      // AI detects ALL documents, crops, flattens, and returns array of base64 images
+      const results = await generateEnhancedDocument(base64, originalImage.type);
+      setProcessedImages(results);
     } catch (err: any) {
       setErrorMessage("Failed to enhance document. Ensure the image is clear.");
     } finally {
@@ -35,43 +39,30 @@ export const DocuScan: React.FC = () => {
     }
   };
 
-  // Downloads the image with a programmatic margin (approx 2cm)
-  const downloadWithMargin = () => {
-    if (!processedImageBase64) return;
+  const handleDownloadAll = async () => {
+    if (processedImages.length === 0) return;
 
-    const img = new Image();
-    img.src = `data:image/png;base64,${processedImageBase64}`;
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+    if (processedImages.length === 1) {
+        // Single File Download - DIRECT RAW IMAGE
+        const link = document.createElement('a');
+        link.download = `DocuScan_Cropped_${Date.now()}.jpg`;
+        link.href = `data:image/jpeg;base64,${processedImages[0]}`;
+        link.click();
+    } else {
+        // Batch ZIP Download - DIRECT RAW IMAGES
+        const zip = new JSZip();
+        const folder = zip.folder("Scanned_Documents");
+        
+        processedImages.forEach((imgBase64, idx) => {
+             folder?.file(`Document_${idx + 1}.jpg`, imgBase64, { base64: true });
+        });
 
-      // 2cm margin simulation.
-      // On A4 (210mm), 20mm is ~10%.
-      // On Passport (125mm), 20mm is ~16%.
-      // We'll use 15% to be safe and noticeable.
-      const marginSize = img.width * 0.15; 
-
-      canvas.width = img.width + (marginSize * 2);
-      canvas.height = img.height + (marginSize * 2);
-
-      // Fill White Background
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // No Drop Shadow - User requested "Scanned" look, usually flat.
-      // But we can add a very faint one to separate from white if they print it.
-      // Actually, standard scans don't have shadows. Let's keep it flat for professional look.
-      
-      // Draw Document Centered
-      ctx.drawImage(img, marginSize, marginSize, img.width, img.height);
-
-      // Download
-      const link = document.createElement('a');
-      link.download = `DocuScan_Enhanced_${Date.now()}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    };
+        const content = await zip.generateAsync({ type: 'blob' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `DocuScan_Batch_${Date.now()}.zip`;
+        link.click();
+    }
   };
 
   return (
@@ -86,63 +77,75 @@ export const DocuScan: React.FC = () => {
           DocuScan <span className="text-emerald-500">AI</span>
         </h1>
         <p className="text-slate-400 max-w-2xl mx-auto text-lg">
-          Turn any photo into a perfect, flat-bed quality scan. AI automatically crops to the document edges, removes the background, and adds a precise 2cm margin.
+          Multi-document intelligence. Upload a photo containing multiple items (Passports, CNICs, Papers) and AI will separate, crop, and straighten each one individually with tight borders.
         </p>
       </div>
 
       {!originalImage ? (
          // Upload Area
          <div 
-           className="w-full max-w-2xl h-80 border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-3xl flex flex-col items-center justify-center bg-slate-900/50 hover:bg-emerald-500/5 transition-all cursor-pointer group"
+           className="w-full max-w-2xl h-80 border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-3xl flex flex-col items-center justify-center bg-slate-900/50 hover:bg-emerald-500/5 transition-all cursor-pointer group relative overflow-hidden"
            onClick={() => document.getElementById('doc-upload')?.click()}
          >
+             {/* Animation BG */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            
             <input id="doc-upload" type="file" accept="image/*" className="hidden" onChange={handleUpload} />
-            <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(0,0,0,0.5)] border border-white/5">
                <Upload className="w-8 h-8 text-emerald-500" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">Upload Document Photo</h3>
-            <p className="text-slate-500">Supported: JPG, PNG</p>
+            <h3 className="text-xl font-bold text-white mb-2 relative z-10">Upload Scan Photo</h3>
+            <p className="text-slate-500 relative z-10">Supports Multiple Documents in One Image</p>
+            {errorMessage && <p className="text-red-400 text-sm mt-2 relative z-10">{errorMessage}</p>}
          </div>
       ) : (
          // Workspace
-         <div className="w-full flex flex-col lg:flex-row gap-8 items-start justify-center">
+         <div className="w-full flex flex-col gap-12">
             
-            {/* Input Preview */}
-            <div className="w-full lg:w-1/2 flex flex-col gap-4">
-                <div className="bg-slate-900 p-4 rounded-2xl border border-white/5 relative">
-                   <h3 className="text-xs font-bold text-slate-500 uppercase mb-3 ml-1">Original Input</h3>
-                   <img src={URL.createObjectURL(originalImage)} className="w-full rounded-lg opacity-80" />
-                   
+            {/* 1. Input Section */}
+            <div className="w-full flex flex-col items-center">
+                <div className="relative max-w-lg w-full bg-slate-900 p-2 rounded-2xl border border-white/10 shadow-xl">
+                   <div className="absolute -top-3 -left-3 bg-emerald-500 text-black text-xs font-bold px-3 py-1 rounded-full shadow-lg">ORIGINAL</div>
+                   <img src={URL.createObjectURL(originalImage)} className="w-full rounded-xl opacity-90" />
                    <button 
-                     onClick={() => { setOriginalImage(null); setProcessedImageBase64(null); }}
-                     className="absolute top-4 right-4 bg-black/60 p-2 rounded-full text-white hover:bg-red-500 transition-colors"
+                     onClick={() => { setOriginalImage(null); setProcessedImages([]); }}
+                     className="absolute top-4 right-4 bg-black/70 hover:bg-red-500 text-white p-2 rounded-full transition-colors backdrop-blur-md"
                    >
                        <X className="w-4 h-4" />
                    </button>
                 </div>
             </div>
 
-            {/* Controls & Output */}
-            <div className="w-full lg:w-1/2 flex flex-col gap-6">
+            {/* 2. Process / Results Section */}
+            <div className="w-full flex flex-col items-center gap-6">
                 
-                {/* Status / Action */}
-                {!processedImageBase64 ? (
-                    <div className="bg-slate-900 p-8 rounded-2xl border border-white/5 flex flex-col items-center text-center gap-4">
+                {processedImages.length === 0 ? (
+                    // Processing State
+                    <div className="bg-slate-900/50 p-8 rounded-3xl border border-white/5 flex flex-col items-center text-center gap-6 max-w-2xl w-full backdrop-blur-sm">
                         {isProcessing ? (
-                            <div className="flex flex-col items-center gap-4 py-8">
-                                <div className="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
-                                <div className="space-y-1">
-                                    <h3 className="text-white font-bold text-lg">Scanning Document...</h3>
-                                    <p className="text-slate-400 text-sm">Cropping edges & flattening perspective</p>
+                            <div className="flex flex-col items-center gap-6 py-4">
+                                <div className="relative">
+                                    <div className="w-16 h-16 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <ScanLine className="w-6 h-6 text-emerald-500 animate-pulse" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <h3 className="text-white font-bold text-xl">Analyzing Scene...</h3>
+                                    <p className="text-slate-400 text-sm">Separating distinct documents & correcting perspective</p>
                                 </div>
                             </div>
                         ) : (
                             <>
-                                <ScanLine className="w-12 h-12 text-emerald-500 mb-2" />
-                                <h3 className="text-xl font-bold text-white">Ready to Scan</h3>
-                                <p className="text-slate-400 text-sm max-w-xs">
-                                    AI will isolate the document from the background and clean it up.
-                                </p>
+                                <div className="p-4 bg-emerald-500/10 rounded-full">
+                                    <Layers className="w-8 h-8 text-emerald-500" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white mb-2">Ready to Extract</h3>
+                                    <p className="text-slate-400 text-sm">
+                                        AI will identify if there is one or multiple documents, crop them tightly, and prepare them for export with professional margins.
+                                    </p>
+                                </div>
                                 {errorMessage && (
                                     <div className="bg-red-500/10 text-red-400 p-3 rounded-lg text-sm flex items-center gap-2">
                                         <AlertCircle className="w-4 h-4" /> {errorMessage}
@@ -150,7 +153,7 @@ export const DocuScan: React.FC = () => {
                                 )}
                                 <button 
                                     onClick={processDocument}
-                                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center gap-2"
+                                    className="px-12 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all transform hover:-translate-y-1"
                                 >
                                     Start AI Scan
                                 </button>
@@ -158,40 +161,54 @@ export const DocuScan: React.FC = () => {
                         )}
                     </div>
                 ) : (
-                    <div className="animate-slide-up flex flex-col gap-6">
-                         {/* Output Preview */}
-                         <div className="bg-slate-900 p-4 rounded-2xl border border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.1)] relative overflow-hidden group">
-                             <h3 className="text-xs font-bold text-emerald-500 uppercase mb-3 ml-1 flex items-center gap-2">
-                                 <CheckCircle2 className="w-4 h-4" /> Enhanced Result
-                             </h3>
-                             
-                             {/* The image here shows the "Margin" visually by adding padding to container */}
-                             <div className="bg-white p-6 md:p-10 rounded shadow-inner flex items-center justify-center">
-                                 <img src={`data:image/png;base64,${processedImageBase64}`} className="w-full shadow-2xl" />
-                             </div>
+                    // Results Grid
+                    <div className="w-full animate-slide-up space-y-8">
+                         <div className="flex flex-col items-center">
+                            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                                <CheckCircle2 className="text-emerald-500" /> 
+                                {processedImages.length} Document{processedImages.length > 1 ? 's' : ''} Extracted
+                            </h2>
+                            
+                            {/* Actions Bar */}
+                            <div className="flex gap-4 mb-8">
+                                 <button 
+                                    onClick={() => { setProcessedImages([]); setOriginalImage(null); }}
+                                    className="px-6 py-3 border border-white/10 text-slate-300 hover:bg-white/5 rounded-xl font-bold transition-all flex items-center gap-2"
+                                 >
+                                    <RefreshCw className="w-4 h-4" /> Reset
+                                 </button>
+                                 <button 
+                                    onClick={handleDownloadAll}
+                                    className="px-8 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all flex items-center gap-2"
+                                 >
+                                    <Download className="w-4 h-4" /> 
+                                    {processedImages.length > 1 ? 'Download All (ZIP)' : 'Download Document'}
+                                 </button>
+                            </div>
                          </div>
 
-                         {/* Actions */}
-                         <div className="flex gap-4">
-                             <button 
-                                onClick={() => { setProcessedImageBase64(null); setOriginalImage(null); }}
-                                className="px-6 py-4 border border-white/10 text-slate-300 hover:bg-white/5 rounded-xl font-bold transition-all flex items-center gap-2"
-                             >
-                                <RefreshCw className="w-5 h-5" /> New
-                             </button>
-                             <button 
-                                onClick={downloadWithMargin}
-                                className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center gap-2"
-                             >
-                                <Download className="w-5 h-5" /> Download with Margin
-                             </button>
+                         {/* Grid */}
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                             {processedImages.map((imgBase64, idx) => (
+                                 <div key={idx} className="bg-slate-900 rounded-2xl border border-white/10 overflow-hidden shadow-2xl hover:border-emerald-500/50 transition-colors group">
+                                     <div className="p-4 border-b border-white/5 flex justify-between items-center bg-black/20">
+                                         <span className="text-xs font-bold text-emerald-400 uppercase">Document #{idx + 1}</span>
+                                         <span className="text-[10px] text-slate-500 bg-white/5 px-2 py-1 rounded">Raw Crop</span>
+                                     </div>
+                                     <div className="p-8 bg-[#f8fafc] flex items-center justify-center relative min-h-[300px]">
+                                         <div className="relative shadow-xl">
+                                            <img src={`data:image/png;base64,${imgBase64}`} className="w-full max-h-[300px] object-contain" />
+                                         </div>
+                                     </div>
+                                 </div>
+                             ))}
                          </div>
-                         <p className="text-center text-xs text-slate-500">
-                             Downloaded file includes a professional 2cm (approx) white margin.
+                         
+                         <p className="text-center text-slate-500 text-sm mt-8">
+                            Note: Downloads are raw AI crops with no extra margin.
                          </p>
                     </div>
                 )}
-
             </div>
          </div>
       )}

@@ -5,7 +5,7 @@ import { Intro } from './components/Intro';
 import { AiSection } from './components/AiSection';
 import { IdentityLab } from './components/IdentityLab';
 import { CvForge } from './components/CvForge';
-import { DocuScan } from './components/DocuScan';
+import { Nomination } from './components/Nomination';
 import { AdsMaker } from './components/AdsMaker';
 import { Section } from './types';
 
@@ -22,8 +22,8 @@ export default function App() {
         return <IdentityLab />;
       case Section.CV_FORGE:
         return <CvForge />;
-      case Section.DOCUSCAN_AI:
-        return <DocuScan />;
+      case Section.NOMINATION:
+        return <Nomination />;
       case Section.ADS_MAKER:
         return <AdsMaker />;
       case Section.WAFID_INTEL:

@@ -96,7 +96,21 @@ export const AiSection: React.FC<AiSectionProps> = ({ type }) => {
                 <label className="cursor-pointer text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 border border-slate-700 hover:border-slate-500">
                   <ImageIcon className="w-3 h-3" />
                   {selectedImage ? 'Change Image' : 'Upload Image'}
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => setSelectedImage(e.target.files?.[0] || null)} />
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                            if (!file.type.startsWith('image/')) {
+                                alert("Please select a valid image file.");
+                                return;
+                            }
+                            setSelectedImage(file);
+                        }
+                    }} 
+                  />
                 </label>
               )}
             </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Section } from '../types';
-import { Zap, Grid, Fingerprint, FileText, ScanLine, Activity, Megaphone } from 'lucide-react';
+import { Zap, Grid, Fingerprint, FileText, QrCode, Activity, Megaphone } from 'lucide-react';
 
 interface NavbarProps {
   currentSection: Section;
@@ -12,7 +12,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentSection, onNavigate }) =>
     { id: Section.PDF_TOOLS, label: 'PDF Tools', icon: Grid },
     { id: Section.IDENTITY_LAB, label: 'Identity Lab', icon: Fingerprint },
     { id: Section.CV_FORGE, label: 'CV Forge', icon: FileText },
-    { id: Section.DOCUSCAN_AI, label: 'DocuScan AI', icon: ScanLine },
+    { id: Section.NOMINATION, label: 'Nomination', icon: QrCode },
     { id: Section.ADS_MAKER, label: 'Ads Maker', icon: Megaphone },
     { id: Section.WAFID_INTEL, label: 'Wafid Intel', icon: Activity },
   ];

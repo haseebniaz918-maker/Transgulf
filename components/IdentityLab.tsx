@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Sparkles, Fingerprint, Download, RefreshCw, X, Camera, ArrowRight, AlertCircle } from 'lucide-react';
+import { Upload, Sparkles, Fingerprint, Download, RefreshCw, X, Camera, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { generateIdentityPhoto, helperFileToBase64 } from '../services/geminiService';
 
 export const IdentityLab: React.FC = () => {
@@ -13,7 +13,12 @@ export const IdentityLab: React.FC = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setOriginalImage(e.target.files[0]);
+      const file = e.target.files[0];
+      if (!file.type.startsWith('image/')) {
+          setErrorMessage("Invalid file type. Please upload a valid image (JPG, PNG).");
+          return;
+      }
+      setOriginalImage(file);
       setGeneratedImageBase64(null);
       setErrorMessage(null);
     }
@@ -30,9 +35,9 @@ export const IdentityLab: React.FC = () => {
     const progressInterval = setInterval(() => {
       setScanProgress(prev => {
         if (prev >= 90) return prev;
-        return prev + 5;
+        return prev + 2; // Slower increment
       });
-    }, 500);
+    }, 100);
 
     try {
       const base64 = await helperFileToBase64(originalImage);
@@ -102,9 +107,10 @@ export const IdentityLab: React.FC = () => {
             </div>
             <h3 className="text-xl font-bold text-white mb-2">Upload Photo</h3>
             <p className="text-slate-500">Drag & drop or click to browse</p>
+            {errorMessage && <p className="text-red-400 text-sm mt-2">{errorMessage}</p>}
           </div>
-        ) : !generatedImageBase64 ? (
-          // Processing / Preview State
+        ) : (!generatedImageBase64 && !isProcessing) ? (
+          // Preview State (Before Processing)
           <div className="w-full max-w-4xl flex flex-col items-center gap-8 animate-slide-up">
             
             <div className="relative w-full max-w-md aspect-[3/4] rounded-2xl overflow-hidden border border-pink-500/30 shadow-2xl bg-black">
@@ -114,29 +120,9 @@ export const IdentityLab: React.FC = () => {
                 className="w-full h-full object-cover opacity-80" 
               />
               
-              {/* Scanning Overlay */}
-              {isProcessing && (
-                 <div className="absolute inset-0 z-10">
-                    <div className="absolute inset-0 bg-pink-500/10 animate-pulse"></div>
-                    <div 
-                      className="absolute left-0 w-full h-1 bg-[#ff00ff] shadow-[0_0_20px_#ff00ff] z-20"
-                      style={{ 
-                        top: `${scanProgress}%`,
-                        transition: 'top 0.5s linear' 
-                      }}
-                    ></div>
-                    <div className="absolute bottom-4 left-0 w-full text-center">
-                        <span className="text-[#ff00ff] font-mono text-sm tracking-widest bg-black/50 px-3 py-1 rounded">
-                           PROCESSING: {scanProgress}%
-                        </span>
-                    </div>
-                 </div>
-              )}
-
               <button 
                 onClick={() => { setOriginalImage(null); setErrorMessage(null); }}
                 className="absolute top-4 right-4 bg-black/60 hover:bg-red-500 text-white p-2 rounded-full transition-colors z-30"
-                disabled={isProcessing}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -149,79 +135,114 @@ export const IdentityLab: React.FC = () => {
                 </div>
             )}
 
-            {!isProcessing && (
-              <button 
+            <button 
                 onClick={processImage}
                 className="px-12 py-4 bg-[#ff00ff] hover:bg-[#d900d9] text-black font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(255,0,255,0.4)] hover:shadow-[0_0_30px_rgba(255,0,255,0.6)] transition-all transform hover:-translate-y-1 flex items-center gap-3"
-              >
+            >
                 <Sparkles className="w-6 h-6 fill-black" />
                 {errorMessage ? 'TRY AGAIN' : 'ENHANCE IDENTITY'}
-              </button>
-            )}
-
-            {isProcessing && (
-                <p className="text-pink-400 animate-pulse font-mono tracking-wide">Analysing facial features & structure...</p>
-            )}
+            </button>
           </div>
         ) : (
-          // Result State
+          // Result / Processing Split View State
           <div className="w-full max-w-6xl flex flex-col items-center gap-12 animate-pop-in">
              <div className="flex flex-col md:flex-row items-center justify-center gap-8 w-full">
                 
-                {/* Original */}
+                {/* Original (Left Side) */}
                 <div className="flex flex-col items-center gap-4">
                     <div className="relative w-72 aspect-[3/4] rounded-2xl overflow-hidden border border-white/10 shadow-lg group">
                         <img 
                             src={URL.createObjectURL(originalImage)} 
                             alt="Original" 
-                            className="w-full h-full object-cover grayscale transition-all duration-500 group-hover:grayscale-0" 
+                            className={`w-full h-full object-cover transition-all duration-500 ${isProcessing ? 'grayscale opacity-60' : 'grayscale-0'}`} 
                         />
-                        <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10">
+                        <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 z-20">
                             <span className="text-xs text-white font-bold tracking-wider">ORIGINAL</span>
                         </div>
-                    </div>
-                </div>
-
-                {/* Arrow */}
-                <div className="hidden md:flex items-center justify-center text-pink-500">
-                    <ArrowRight className="w-8 h-8 opacity-50" />
-                </div>
-
-                {/* Result */}
-                <div className="flex flex-col items-center gap-4">
-                    <div className="relative w-80 aspect-[3/4] rounded-2xl overflow-hidden border-2 border-[#ff00ff] shadow-[0_0_30px_rgba(255,0,255,0.2)] group">
-                        <img 
-                            src={`data:image/png;base64,${generatedImageBase64}`} 
-                            alt="Generated" 
-                            className="w-full h-full object-cover" 
-                        />
-                         <div className="absolute top-4 left-4 bg-pink-500/80 backdrop-blur-md px-3 py-1 rounded-lg border border-white/20 shadow-lg">
-                            <span className="text-xs text-white font-bold tracking-wider flex items-center gap-1">
-                                <Sparkles className="w-3 h-3 fill-white" /> ENHANCED
-                            </span>
-                        </div>
                         
-                        {/* Shimmer Effect */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                        {/* Scanning Effect on Original during Processing */}
+                        {isProcessing && (
+                            <div className="absolute inset-0 z-10">
+                                <div className="absolute inset-0 bg-pink-500/10"></div>
+                                <div 
+                                    className="absolute left-0 w-full h-1 bg-[#ff00ff] shadow-[0_0_20px_#ff00ff]"
+                                    style={{ 
+                                        top: `${scanProgress}%`,
+                                        transition: 'top 0.1s linear' 
+                                    }}
+                                ></div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Arrow / Loader */}
+                <div className="hidden md:flex items-center justify-center text-pink-500">
+                    {isProcessing ? (
+                         <div className="relative">
+                             <div className="w-10 h-10 border-4 border-pink-500/30 border-t-[#ff00ff] rounded-full animate-spin"></div>
+                         </div>
+                    ) : (
+                         <ArrowRight className="w-8 h-8 opacity-50" />
+                    )}
+                </div>
+
+                {/* Result (Right Side) */}
+                <div className="flex flex-col items-center gap-4">
+                    <div className={`relative w-80 aspect-[3/4] rounded-2xl overflow-hidden border-2 ${isProcessing ? 'border-pink-500/30' : 'border-[#ff00ff]'} shadow-[0_0_30px_rgba(255,0,255,0.2)] bg-black`}>
+                        {isProcessing ? (
+                            // SKELETON LOADER
+                            <div className="w-full h-full relative flex flex-col items-center justify-center bg-slate-900 overflow-hidden">
+                                {/* Shimmer */}
+                                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent z-10 animate-[shimmer_1.5s_infinite] translate-x-[-100%]"></div>
+                                
+                                <div className="w-32 h-32 rounded-full bg-slate-800 mb-6 animate-pulse"></div>
+                                <div className="w-48 h-4 bg-slate-800 rounded mb-3 animate-pulse"></div>
+                                <div className="w-32 h-4 bg-slate-800 rounded animate-pulse"></div>
+                                
+                                <div className="absolute bottom-6 flex items-center gap-2 text-pink-400 text-xs font-mono animate-pulse">
+                                    <Sparkles className="w-3 h-3" />
+                                    ENHANCING AI MODEL...
+                                </div>
+                            </div>
+                        ) : (
+                            // GENERATED IMAGE
+                            <>
+                                <img 
+                                    src={`data:image/png;base64,${generatedImageBase64}`} 
+                                    alt="Generated" 
+                                    className="w-full h-full object-cover" 
+                                />
+                                <div className="absolute top-4 left-4 bg-pink-500/80 backdrop-blur-md px-3 py-1 rounded-lg border border-white/20 shadow-lg">
+                                    <span className="text-xs text-white font-bold tracking-wider flex items-center gap-1">
+                                        <Sparkles className="w-3 h-3 fill-white" /> ENHANCED
+                                    </span>
+                                </div>
+                                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                            </>
+                        )}
                     </div>
                 </div>
              </div>
 
-             <div className="flex gap-4">
-                 <button 
-                    onClick={() => { setGeneratedImageBase64(null); setOriginalImage(null); setErrorMessage(null); }}
-                    className="px-6 py-3 border border-pink-500/30 text-pink-500 hover:bg-pink-500/10 rounded-xl font-bold transition-all flex items-center gap-2"
-                 >
-                    <RefreshCw className="w-5 h-5" /> New Scan
-                 </button>
+             {/* Footer Actions */}
+             {!isProcessing && (
+                 <div className="flex gap-4 animate-slide-up">
+                     <button 
+                        onClick={() => { setGeneratedImageBase64(null); setOriginalImage(null); setErrorMessage(null); }}
+                        className="px-6 py-3 border border-pink-500/30 text-pink-500 hover:bg-pink-500/10 rounded-xl font-bold transition-all flex items-center gap-2"
+                     >
+                        <RefreshCw className="w-5 h-5" /> New Scan
+                     </button>
 
-                 <button 
-                    onClick={handleDownload}
-                    className="px-8 py-3 bg-[#ff00ff] hover:bg-[#d900d9] text-black font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(255,0,255,0.4)] hover:shadow-[0_0_30px_rgba(255,0,255,0.6)] transition-all transform hover:-translate-y-1 flex items-center gap-2"
-                 >
-                    <Download className="w-5 h-5" /> Download Identity
-                 </button>
-             </div>
+                     <button 
+                        onClick={handleDownload}
+                        className="px-8 py-3 bg-[#ff00ff] hover:bg-[#d900d9] text-black font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(255,0,255,0.4)] hover:shadow-[0_0_30px_rgba(255,0,255,0.6)] transition-all transform hover:-translate-y-1 flex items-center gap-2"
+                     >
+                        <Download className="w-5 h-5" /> Download Identity
+                     </button>
+                 </div>
+             )}
           </div>
         )}
       </div>

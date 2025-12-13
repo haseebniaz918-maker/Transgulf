@@ -49,11 +49,43 @@ export const PdfTools: React.FC<PdfToolsProps> = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files);
-      if (['merge', 'pdf-to-img', 'img-to-pdf'].includes(activeTool?.id || '')) {
-        setFiles(prev => [...prev, ...newFiles]);
+      const newFiles: File[] = Array.from(e.target.files);
+      const validFiles: File[] = [];
+      let hasInvalid = false;
+
+      // Validation Logic
+      if (activeTool?.id === 'img-to-pdf') {
+          // Expect images
+          newFiles.forEach(f => {
+              if (f.type.startsWith('image/')) validFiles.push(f);
+              else hasInvalid = true;
+          });
+          if (hasInvalid) setResultMessage("Error: Only image files (JPG, PNG, WebP) are accepted.");
+          else setResultMessage(""); 
+      } else if (activeTool?.id === 'word-to-pdf') {
+          // Expect docx
+          newFiles.forEach(f => {
+              if (f.name.toLowerCase().endsWith('.docx')) validFiles.push(f);
+              else hasInvalid = true;
+          });
+          if (hasInvalid) setResultMessage("Error: Only .docx files are accepted.");
+          else setResultMessage("");
       } else {
-        setFiles([newFiles[0]]);
+          // Expect PDF
+          newFiles.forEach(f => {
+              if (f.type === 'application/pdf') validFiles.push(f);
+              else hasInvalid = true;
+          });
+          if (hasInvalid) setResultMessage("Error: Only PDF files are accepted.");
+          else setResultMessage("");
+      }
+      
+      if (validFiles.length === 0) return; // Stop if no valid files
+
+      if (['merge', 'pdf-to-img', 'img-to-pdf'].includes(activeTool?.id || '')) {
+        setFiles(prev => [...prev, ...validFiles]);
+      } else {
+        setFiles([validFiles[0]]);
       }
     }
   };

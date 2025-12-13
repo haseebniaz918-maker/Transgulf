@@ -123,26 +123,28 @@ export const generateIdentityPhoto = async (base64Image: string, mimeType: strin
   }
 };
 
-export const generateEnhancedDocument = async (base64Image: string, mimeType: string): Promise<string> => {
+export const generateEnhancedDocument = async (base64Image: string, mimeType: string): Promise<string[]> => {
   try {
     const ai = getClient();
     const model = 'gemini-2.5-flash-image';
     
     const prompt = `
-    You are an advanced Document Scanner AI.
+    You are an advanced Computer Vision AI specializing in Document Extraction.
     
-    **INPUT**: An image containing a document (Passport, ID Card, A4 Paper) placed on a background surface.
+    **CRITICAL TASK**: Detect and Extract the *Identity Document* (Passport, CNIC, ID Card) from the image.
     
-    **TASK**:
-    1. **ISOLATE**: Detect the main document object. 
-    2. **CROP**: Crop the image TIGHTLY to the document edges. Remove ALL background (table, bedsheet, fingers, shadows outside the document).
-    3. **PERSPECTIVE**: Correct the perspective. The output must be a perfect, flat, 2D top-down view of the document. Fix any skew.
-    4. **ENHANCE**: 
-       - Remove glare and shadows ON the document.
-       - Optimize contrast for readability.
-       - **CRITICAL**: Do NOT change the text content. Preserve the original pixel details of the text/logos.
+    **STRICT RULES FOR BACKGROUNDS**:
+    - **Passport on White Paper**: If a passport is placed on a piece of white paper, the white paper is **BACKGROUND TRASH**. You must CROP ONLY the Passport Booklet. Ignore the white paper completely.
+    - **Table/Bed Surfaces**: Remove all surrounding surfaces.
     
-    **OUTPUT**: Return ONLY the cropped, flattened document image. Do not add any white margins or borders in the AI output.
+    **ACTION PLAN**:
+    1. **DETECT**: Find the boundaries of the specific ID document (Green/Blue Passport Booklet or Plastic ID Card).
+    2. **CROP**: Crop tightly to the edges of that document. Do NOT leave any margin or surrounding paper.
+    3. **WARP**: Correct perspective to a flat, top-down view (0-degree scan angle).
+    4. **NO MARGINS**: The output image must be the document itself, edge-to-edge.
+    
+    **OUTPUT**:
+    - Return isolated image(s) of the documents found.
     `;
 
     const response = await ai.models.generateContent({
@@ -155,14 +157,21 @@ export const generateEnhancedDocument = async (base64Image: string, mimeType: st
       }
     });
 
+    const images: string[] = [];
+
     if (response.candidates?.[0]?.content?.parts) {
       for (const part of response.candidates[0].content.parts) {
         if (part.inlineData && part.inlineData.data) {
-          return part.inlineData.data;
+          images.push(part.inlineData.data);
         }
       }
     }
-    throw new Error("No document generated.");
+
+    if (images.length === 0) {
+        throw new Error("No document generated.");
+    }
+
+    return images;
   } catch (error) {
     console.error("DocuScan Error:", error);
     throw error;
@@ -244,157 +253,178 @@ export const enhanceHtmlForPdf = async (rawHtml: string): Promise<string> => {
     }
 };
 
-export const generateCvHtml = async (cvData: any): Promise<string> => {
+export const generateCvHtml = async (cvData: any, userInstruction: string = ""): Promise<string> => {
+  const ai = getClient();
+  
+  const { photoBase64, ...dataWithoutPhoto } = cvData;
+  const layoutId = cvData.layoutId || Math.floor(Math.random() * 10000);
+  const jobRole = cvData.jobRole || "Professional";
+  
+  const aiAnalysisData = { 
+      ...dataWithoutPhoto, 
+      photoBase64: photoBase64 ? "EXISTS" : null 
+  };
+
+  const prompt = `
+  You are an elite AI CV Architect & Renderer with a master-level understanding of Typography and Color Theory.
+
+  **CORE OBJECTIVE**: 
+  Transform the provided User Data (JSON) into a visually flawless, high-contrast, professional HTML5 CV.
+  
+  **DESIGN SEED**: ${layoutId}
+  **TARGET ROLE**: ${jobRole}
+  **USER REQUEST**: "${userInstruction}"
+
+  **STRICT VISUAL & READABILITY RULES (MANDATORY)**:
+  1. **INTELLIGENT CONTRAST ENFORCEMENT (WCAG AAA)**:
+     - **Rule 1**: If you create a Sidebar or Header with a **Dark Background** (e.g., #0f172a, #1e3a8a, #000000), the Text Color inside it **MUST be #FFFFFF** (White).
+     - **Rule 2**: If the Background is **Light** (e.g., #FFFFFF, #F1F5F9), the Text Color **MUST be Dark** (#0f172a, #334155).
+     - **Rule 3**: NEVER use light gray text on a white background. Minimum contrast ratio 7:1.
+     - **Rule 4**: Prevent text from touching edges. Ensure adequate padding (min 15px) inside colored blocks.
+
+  2. **TEMPLATE ENGINE LOGIC (MASTER LAYOUTS)**:
+     - Based on the Seed, deterministically select and perfectly render one of these Professional Archetypes:
+       - **The Executive**: Double-column, Navy Blue/Dark Grey header, Serif fonts (Merriweather), authoritative.
+       - **The Modernist**: Clean sans-serif (Inter/Roboto), subtle gray accents, very high whitespace, minimal.
+       - **The Creative Pro**: Bold Left Sidebar (Dark deep color like Teal/Purple/Black), white text on sidebar, dark text on main body.
+       - **The Ivy League**: Classic, centered name, horizontal dividers, Times New Roman, strictly black & white.
+       - **The Tech Lead**: Dark Mode elements or Monospace accents, clean grid system.
+     - **LAYOUT INTEGRITY**: Ensure the layout is **COMPLETE**. Do not cut off the bottom. If content overflows, handle it gracefully. The CV should look finished.
+
+  3. **CONTENT FIDELITY & COMPLETION**:
+     - **Render EVERY item** in the Experience and Education arrays. Do not skip older jobs.
+     - **Zero Hallucination**: Do not invent dates or companies.
+     - **Smart Details**: If the input JSON has empty 'details' for a job/degree, you **MUST** generate 3 professional, role-appropriate bullet points. If 'details' are provided, use them VERBATIM.
+
+  **TECHNICAL OUTPUT SPECIFICATIONS**:
+  - Return **ONLY** raw HTML string. No markdown code blocks.
+  - Embed CSS in \`<style>\` tags.
+  - Page Size: \`width: 210mm; min-height: 297mm; background: white;\`.
+  - Photo Handling: Use \`src="[[PHOTO_PLACEHOLDER]]"\`. Style it (circle/square/rounded) based on the design.
+  - Fonts: Import professional Google Fonts.
+
+  **INPUT DATA**:
+  ${JSON.stringify(aiAnalysisData, null, 2)}
+  `;
+
+  let text = "";
+  
   try {
-    const ai = getClient();
-    const model = 'gemini-3-pro-preview';
-
-    const photoBase64 = cvData.photoBase64 || "";
-    // Random Layout Logic passed from Frontend
-    const layoutId = cvData.layoutId || Math.floor(Math.random() * 100) + 1;
-    const jobRole = cvData.jobRole || "Professional";
-    
-    const aiAnalysisData = { 
-        ...cvData, 
-        photoBase64: photoBase64 ? "EXISTS" : null 
-    };
-
-    const prompt = `
-    You are a World-Class CV Architect.
-    
-    **TASK**: Generate a professional HTML CV for a candidate applying for the role of: **${jobRole}**.
-    **SELECTED LAYOUT ID**: Master Template #${layoutId} (Use a text-heavy, clean, professional layout).
-    
-    **CRITICAL REQUIREMENT - SINGLE PAGE**:
-    - The output MUST fit on strictly **ONE PAGE** (A4).
-    - Use CSS: \`overflow: hidden; max-height: 295mm;\` in the \`.safe-zone\` container to cut off any second page.
-    - Adjust font-sizes slightly if content is too long.
-    
-    **CRITICAL REQUIREMENT - TYPOGRAPHY**:
-    - **Font**: Use **'Times New Roman', serif** for EVERYTHING.
-    - Make it attractive by using **Bold** headers, *Italics* for meta-data, and ALL-CAPS for section titles.
-    - Use \`<hr>\` or border-bottoms to separate sections cleanly.
-
-    **AUTO-CONTENT GENERATION (BE CREATIVE)**:
-    1. **CAREER OBJECTIVE**: Write a strong, 3-line professional summary tailored specifically to **${jobRole}**.
-    2. **SKILLS**: Generate a 'Skills' section with 8-12 hard and soft skills relevant to **${jobRole}**. Display them in a 2-column list or comma-separated block.
-    3. **RESPONSIBILITIES**: For every experience entry provided, generate 3-4 professional bullet points of responsibilities typical for that role. Do NOT leave them empty.
-
-    **MANDATORY DATA (ALL MUST BE INCLUDED)**:
-    - Name (Huge Typography, Centered or Left)
-    - Personal Details Block (Father Name, Religion, Nationality, DOB, CNIC, Passport No/Issue/Expiry, Place of Birth, Marital Status).
-    - Address, Phone, Email.
-    - Education (Degree, School, Years).
-    - Experience (Designation, Company, Years) + **Generated Responsibilities**.
-    
-    **CSS INJECTION**:
-    - Include a \`<style>\` block.
-    - \`* { font-family: 'Times New Roman', serif !important; box-sizing: border-box; margin: 0; padding: 0; }\`
-    - \`body { background: white; width: 210mm; height: 297mm; overflow: hidden; }\`
-    - \`.safe-zone { padding: 15mm; width: 100%; height: 296mm; display: flex; flex-direction: column; overflow: hidden; }\`
-    - \`.section-header { text-transform: uppercase; font-weight: bold; border-bottom: 2px solid #000; margin-top: 15px; margin-bottom: 8px; font-size: 14px; }\`
-    - \`li { font-size: 12px; margin-bottom: 2px; }\`
-    
-    **DATA**:
-    ${JSON.stringify(aiAnalysisData, null, 2)}
-
-    **OUTPUT**:
-    Return ONLY valid HTML5 code starting with <!DOCTYPE html>.
-    `;
-
     const response = await ai.models.generateContent({
-      model,
+      model: 'gemini-3-pro-preview',
       contents: prompt,
     });
-
-    let text = response.text || "";
-    text = text.replace(/^```html/, '').replace(/```$/, '').trim();
-    
-    const placeholderRegex = /\[\[PHOTO_PLACEHOLDER\]\]|"%5B%5BPHOTO_PLACEHOLDER%5D%5D"|%5B%5BPHOTO_PLACEHOLDER%5D%5D/g;
-
-    if (photoBase64) {
-        const dataUri = `data:image/jpeg;base64,${photoBase64}`;
-        text = text.replace(placeholderRegex, dataUri);
-    } else {
-        const fallback = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI1MCIgZmlsbD0iI2UzZTNlMyIvPjwvc3ZnPg==";
-        text = text.replace(placeholderRegex, fallback);
-    }
-    
-    return text;
+    text = response.text || "";
   } catch (error) {
-    console.error("CV Generation Error:", error);
-    throw new Error("Failed to generate CV template.");
+    console.warn("Gemini 3 Pro failed, falling back to Flash", error);
+    try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+        });
+        text = response.text || "";
+    } catch (finalError) {
+        console.error("CV Generation Final Error:", finalError);
+        throw new Error("Failed to generate CV. Please check your internet or API limits.");
+    }
   }
+
+  text = text.replace(/^```html/, '').replace(/```$/, '').trim();
+  
+  const placeholderRegex = /\[\[PHOTO_PLACEHOLDER\]\]|"%5B%5BPHOTO_PLACEHOLDER%5D%5D"|%5B%5BPHOTO_PLACEHOLDER%5D%5D/g;
+
+  if (photoBase64) {
+      const dataUri = `data:image/jpeg;base64,${photoBase64}`;
+      text = text.replace(placeholderRegex, dataUri);
+      text = text.replace(/src=["']EXISTS["']/gi, `src="${dataUri}"`);
+      text = text.replace(/data:image\/[a-zA-Z]+;base64,EXISTS/g, dataUri);
+  } else {
+      const fallback = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI1MCIgZmlsbD0iI2UzZTNlMyIvPjwvc3ZnPg==";
+      text = text.replace(placeholderRegex, fallback);
+      text = text.replace(/src=["']EXISTS["']/gi, `src="${fallback}"`);
+      text = text.replace(/data:image\/[a-zA-Z]+;base64,EXISTS/g, fallback);
+  }
+  
+  return text;
 };
 
 export const generateAdHtml = async (adData: any): Promise<string> => {
+  const ai = getClient();
+  const seed = Date.now();
+  const jobCount = adData.jobs.length;
+  
+  // Logic to determine layout density to ensure it fits in 1080px
+  let cols = 2;
+  if (jobCount === 1) cols = 1;
+  else if (jobCount > 4) cols = 3;
+  
+  // Calculate approximate row height constraints for the prompt
+  const isHighDensity = jobCount > 5;
+
+  const prompt = `
+  You are a World-Class Graphic Designer for Social Media Advertising.
+  
+  **TASK**: Create a High-Impact, **SQUARE (1080x1080px)** Recruitment Ad in HTML.
+  
+  **STRICT CONSTRAINT**: The ad MUST be exactly 1080px height. **NO OVERFLOW OR SCROLLING**. Everything must fit perfectly.
+  
+  **DESIGN DIRECTION**: "Modern International Agency".
+  - **Colors**: Deep Royal Blue, Metallic Gold, and White.
+  - **Style**: High Contrast, Professional, Clean.
+  - **Fonts**: 'Montserrat', 'Roboto', sans-serif (Google Fonts).
+
+  **LAYOUT STRUCTURE (Flexbox/Grid - Total Height 1080px)**:
+  
+  1. **HEADER (Fixed ~150px)**:
+     - Background: Gradient (Gold/Blue).
+     - Text: "URGENT REQUIREMENT FOR ${adData.country.toUpperCase()}" (Bold, Large).
+     - Sub-text: "${adData.company}".
+
+  2. **JOB GRID (Fills Remaining Space)**:
+     - Use \`display: grid\`.
+     - Columns: ${cols}.
+     - **Gap**: ${isHighDensity ? '10px' : '20px'}.
+     - **Card Style**: White background, rounded corners, shadow.
+     - **Image Height**: ${isHighDensity ? '100px' : '180px'}. Use \`object-fit: cover\`.
+     - **Typography**: Adjust font size so all ${jobCount} jobs fit. If many jobs, use smaller fonts (14px).
+
+  3. **FOOTER (Fixed ~120px)**:
+     - Background: Dark Navy.
+     - Content: "BRING DOCUMENTS TO OFFICE", "Rana Trade Test Center – Attock", "0572603447".
+
+  **DATA TO RENDER**:
+  ${JSON.stringify(adData.jobs)}
+
+  **IMAGE GENERATION**:
+  - For EACH job in the list, use an image tag with this specific URL format:
+    \`https://image.pollinations.ai/prompt/photorealistic%20high%20quality%20photo%20of%20a%20professional%20{JOB_TITLE_ENCODED}%20worker%20site%20uniform?width=400&height=300&nologo=true&seed=${seed}\`
+  - **IMPORTANT**: You MUST replace \`{JOB_TITLE_ENCODED}\` with the actual job title from the data (URL encoded).
+  - Example: If title is "Pipe Fitter", URL is \`...photo%20of%20a%20professional%20Pipe%20Fitter%20worker...\`.
+
+  **TECHNICAL OUTPUT**:
+  - Return **ONLY** raw HTML with embedded CSS.
+  - Container \`#ad-container\` must have \`width: 1080px; height: 1080px; overflow: hidden; display: flex; flex-direction: column;\`.
+  - Grid should have \`flex: 1; overflow: hidden;\`.
+  `;
+
+  let text = "";
   try {
-    const ai = getClient();
-    const model = 'gemini-3-pro-preview';
-    const seed = Date.now();
-
-    const prompt = `
-    You are an Expert Advertising Designer for Recruitment Agencies.
-    
-    **TASK**: Create a visually stunning, Vertical (9:16 Aspect Ratio) Job Advertisement HTML.
-    
-    **DESIGN THEME**: "ULTRA-BOLD & VISUAL".
-    - **TYPOGRAPHY**: Job Titles MUST be HUGE (at least 28px), BOLD, and High Contrast.
-    - **IMAGES**: Images must be LARGE and prominent (width: 100px+ or full width cards).
-    - **VISIBILITY**: The text and images should be the first thing the user sees. Maximum readability.
-    - Vary the layout structure based on this seed ID: ${seed}.
-    - The design MUST be decent, trustworthy, and eye-catching.
-    - Use gradients, shadows, and card layouts to make vacancies pop.
-    
-    **INPUT DATA**:
-    - **Country**: ${adData.country} (FEATURE THIS PROMINENTLY, ADD FLAG ICON IF POSSIBLE)
-    - **Company**: ${adData.company || "Leading Company"}
-    - **Vacancies**: ${JSON.stringify(adData.jobs)}
-
-    **MANDATORY REQUIREMENTS**:
-    1. **CONTAINER**: 
-       - \`width: 100%; height: 100%;\` (Targeting a 360x640px viewport).
-       - Use \`display: flex; flex-direction: column;\`.
-    2. **IMAGES (AI MATCHING)**: 
-       - For EACH vacancy, you MUST include a relevant image.
-       - **CRITICAL**: Use this exact URL format for images:
-         \`https://image.pollinations.ai/prompt/{visual_description_encoded}?width=400&height=400&nologo=true&seed=${seed}&model=flux\`
-       - **IMPORTANT**: 
-         - Replace spaces with \`%20\` in the visual description.
-         - Keep descriptions concise (max 5 words).
-         - Example: \`https://image.pollinations.ai/prompt/construction%20worker%20site?width=400&height=400&nologo=true&seed=${seed}&model=flux\`
-       - **FALLBACK**: Add \`onerror="this.onerror=null; this.src='https://placehold.co/400x400/1e293b/00f3ff?text=Job+Vacancy';"\` to every \`<img>\` tag to prevent broken images.
-       - Style the images: LARGE, Rounded corners, shadow.
-    3. **FOOTER (STRICTLY ENFORCED)**:
-       - You MUST include a fixed footer at the bottom with EXACTLY this text and hierarchy:
-       - **Transgulf International** (Large/Bold)
-       - **Rana Trade Center Attock City**
-       - **Phone No: 0572603447**
-       - "Visit Office if you are interested"
-    4. **LAYOUT**:
-       - Header: Country/Company + Title "URGENTLY REQUIRED" (HUGE FONT).
-       - Body: Grid or List of vacancies. Each item shows: LARGE Image + HUGE Job Title.
-       - Footer: The mandatory contact info.
-
-    **OUTPUT**:
-    - Return ONLY valid HTML code.
-    - Embed CSS in \`<style>\` tag.
-    - Use Google Fonts (Montserrat, Poppins, or Bebas Neue).
-    `;
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-    });
-
-    let text = response.text || "";
-    text = text.replace(/^```html/, '').replace(/```$/, '').trim();
-    
-    return text;
-  } catch (error) {
-    console.error("Ad Gen Error:", error);
-    throw new Error("Failed to generate Ad.");
+     const response = await ai.models.generateContent({
+        model: 'gemini-3-pro-preview',
+        contents: prompt,
+     });
+     text = response.text || "";
+  } catch (e) {
+     console.warn("Ad Generation fallback", e);
+     const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+     });
+     text = response.text || "";
   }
+
+  text = text.replace(/^```html/, '').replace(/```$/, '').trim();
+  return text;
 };
 
 export const helperFileToBase64 = (file: File): Promise<string> => {

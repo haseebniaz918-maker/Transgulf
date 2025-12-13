@@ -221,6 +221,10 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const f = e.target.files?.[0];
       if (f) {
+          if (!f.type.startsWith('image/')) {
+              alert("Please select a valid image file.");
+              return;
+          }
           const viewport = pdfViewportRef.current;
           const pdfX = 50; 
           const pdfY = viewport ? (viewport.viewBox[3] / 2) : 400; 
