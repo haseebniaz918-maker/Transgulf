@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Navbar } from './components/Navbar';
 import { PdfTools } from './components/PdfTools';
 import { Intro } from './components/Intro';
-import { AiSection } from './components/AiSection';
 import { IdentityLab } from './components/IdentityLab';
 import { CvForge } from './components/CvForge';
 import { Nomination } from './components/Nomination';
@@ -38,22 +37,48 @@ export default function App() {
     <>
       {!introComplete && <Intro onComplete={() => setIntroComplete(true)} />}
       
-      <div className={`min-h-screen bg-[#020617] text-slate-100 transition-opacity duration-1000 ${introComplete ? 'opacity-100' : 'opacity-0'}`}>
+      <div 
+        className="app-container" 
+        style={{ 
+            opacity: introComplete ? 1 : 0, 
+            transition: 'opacity 1s ease-in-out',
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column'
+        }}
+      >
         <Navbar 
           currentSection={activeSection} 
           onNavigate={setActiveSection} 
         />
         
-        <main className="relative">
+        <main style={{ position: 'relative', flex: 1 }}>
           {/* Ambient Background Glows */}
-          <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#00f3ff]/10 blur-[120px] rounded-full pointer-events-none mix-blend-screen" />
+          <div style={{
+            position: 'fixed',
+            top: '5rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '800px',
+            height: '400px',
+            background: 'radial-gradient(circle, rgba(0, 243, 255, 0.1) 0%, transparent 70%)',
+            pointerEvents: 'none',
+            zIndex: 0
+          }}></div>
           
-          <div className="relative z-10 animate-fade-in">
+          <div className="animate-fade-in" style={{ position: 'relative', zIndex: 1, padding: '1.5rem', maxWidth: '1600px', margin: '0 auto' }}>
             {renderContent()}
           </div>
         </main>
 
-        <footer className="text-center py-8 text-slate-600 text-sm border-t border-white/5 mt-auto">
+        <footer style={{ 
+            textAlign: 'center', 
+            padding: '2rem', 
+            color: 'var(--text-muted)', 
+            fontSize: '0.875rem', 
+            borderTop: '1px solid var(--border-light)',
+            marginTop: 'auto'
+        }}>
           &copy; 2024 Bhatti's AI Tools. All rights reserved.
         </footer>
       </div>

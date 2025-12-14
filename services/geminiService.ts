@@ -57,20 +57,32 @@ export const generateText = async (prompt: string, context?: string): Promise<st
   }
 };
 
-export const validateIdentityFormat = async (value: string, type: 'CNIC' | 'PASSPORT'): Promise<{ isValid: boolean, message: string }> => {
+export const validateFieldWithAI = async (value: string, type: 'CNIC' | 'PASSPORT' | 'DOB' | 'DATE_ISSUE' | 'DATE_EXPIRY'): Promise<{ isValid: boolean, message: string, suggestion?: string }> => {
   try {
     const ai = getClient();
+    const today = new Date().toISOString().split('T')[0];
+    
     const prompt = `
-      You are a strict Data Validation AI.
-      Check if this value is a valid format for a Pakistani ${type}.
+      You are a strict Data Validation Officer.
+      Analyze the following input value for a Pakistani citizen's document.
       
-      Value: "${value}"
+      **Input Type**: ${type}
+      **Input Value**: "${value}"
+      **Current Date**: ${today}
       
-      Rules:
-      - CNIC: Must be 13 digits, usually formatted 12345-1234567-1.
-      - Passport: Pakistani Passport usually starts with 1-2 letters followed by 7 digits.
+      **Rules**:
+      - **CNIC**: Must be 13 digits. Standard format: 12345-1234567-1. If hyphens missing, suggest them.
+      - **PASSPORT**: Pakistani Passports typically start with 1-2 alphabets followed by 7 digits (e.g., AB1234567).
+      - **DOB**: Must be a plausible date of birth (user must be between 18 and 100 years old).
+      - **DATE_ISSUE**: Must be in the past, but not more than 10 years ago (standard validity).
+      - **DATE_EXPIRY**: Must be in the future (usually 5 or 10 years from issue).
       
-      Return ONLY a JSON object: { "isValid": boolean, "message": "Short reason" }
+      **Return JSON ONLY**:
+      {
+        "isValid": boolean,
+        "message": "Short error explanation or 'Valid'",
+        "suggestion": "Corrected format if applicable, else null"
+      }
     `;
 
     const response = await ai.models.generateContent({
@@ -82,8 +94,13 @@ export const validateIdentityFormat = async (value: string, type: 'CNIC' | 'PASS
     const text = response.text || "{}";
     return JSON.parse(text);
   } catch (e) {
-    return { isValid: false, message: "AI Validation Failed" };
+    return { isValid: false, message: "AI Validation Failed", suggestion: "" };
   }
+};
+
+// Deprecated alias for backward compatibility
+export const validateIdentityFormat = async (value: string, type: 'CNIC' | 'PASSPORT') => {
+    return validateFieldWithAI(value, type);
 };
 
 export const generateImageDescription = async (base64Image: string, mimeType: string): Promise<string> => {

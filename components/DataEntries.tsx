@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Database, Save, Download, FileSpreadsheet, Plus, Search, Trash2, MapPin, Phone, Briefcase, User, Calendar, FileText, Upload, AlertCircle } from 'lucide-react';
+import { Database, Save, FileSpreadsheet, Search, Trash2, MapPin, Phone, Briefcase, User, Upload, AlertCircle } from 'lucide-react';
 
-// --- Types ---
 interface WorkerEntry {
   id: string;
-  date: string; // ISO Date String (YYYY-MM-DD)
+  date: string;
   name: string;
   fatherName: string;
   age: string;
@@ -17,7 +16,6 @@ interface WorkerEntry {
   remarks: string;
 }
 
-// --- Data Constants ---
 const TRADES = [
   "Electrician", "Plumber", "Mason", "Steel Fixer", "Shuttering Carpenter", 
   "Welder (3G/4G)", "Welder (6G)", "Fabricator", "Pipe Fitter", "AC Technician", 
@@ -62,7 +60,6 @@ const LOCATIONS: Record<string, Record<string, string[]>> = {
 };
 
 export const DataEntries: React.FC = () => {
-  // --- State ---
   const [entries, setEntries] = useState<WorkerEntry[]>([]);
   const [formData, setFormData] = useState<Omit<WorkerEntry, 'id' | 'date'>>({
     name: '',
@@ -81,7 +78,6 @@ export const DataEntries: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState<string>('');
 
-  // --- Persistence ---
   useEffect(() => {
     const saved = localStorage.getItem('bhattis_data_entries');
     if (saved) {
@@ -98,7 +94,6 @@ export const DataEntries: React.FC = () => {
     localStorage.setItem('bhattis_data_entries', JSON.stringify(newEntries));
   };
 
-  // --- Handlers ---
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     if (name === 'province') {
@@ -122,11 +117,9 @@ export const DataEntries: React.FC = () => {
         ...formData
     };
 
-    // Add to top of list
     const updatedEntries = [newEntry, ...entries];
     saveToStorage(updatedEntries);
     
-    // Reset Form
     setFormData({
         name: '', fatherName: '', age: '', phone1: '', phone2: '', 
         trade: '', province: '', district: '', city: '', remarks: ''
@@ -140,7 +133,6 @@ export const DataEntries: React.FC = () => {
     }
   };
 
-  // --- Excel Import Logic ---
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -153,12 +145,10 @@ export const DataEntries: React.FC = () => {
               const XLSX = window.XLSX;
               const wb = XLSX.read(bstr, { type: 'binary' });
               
-              // Assume first sheet is Master
               const wsName = wb.SheetNames[0];
               const ws = wb.Sheets[wsName];
               const data = XLSX.utils.sheet_to_json(ws);
 
-              // Map generic excel data to our schema if possible
               const importedEntries: WorkerEntry[] = data.map((row: any, idx: number) => ({
                   id: `imported-${Date.now()}-${idx}`,
                   date: row['Date'] || row['date'] || new Date().toISOString().split('T')[0],
@@ -172,13 +162,14 @@ export const DataEntries: React.FC = () => {
                   district: row['District'] || row['district'] || '',
                   city: row['City'] || row['city'] || '',
                   remarks: row['Remarks'] || row['remarks'] || ''
-              })).filter((e: WorkerEntry) => e.name); // Filter empty rows
+              })).filter((e: WorkerEntry) => e.name);
 
-              // Merge logic: Don't duplicate if exact name+phone matches? 
-              // For simplicity, we append imported entries to existing ones.
-              const merged = [...entries, ...importedEntries];
+              const existingKeys = new Set(entries.map(e => `${e.name}|${e.phone1}`));
+              const newUniqueEntries = importedEntries.filter(e => !existingKeys.has(`${e.name}|${e.phone1}`));
+              
+              const merged = [...newUniqueEntries, ...entries];
               saveToStorage(merged);
-              setImportStatus(`Successfully imported ${importedEntries.length} records from ${file.name}`);
+              setImportStatus(`Imported ${newUniqueEntries.length} new records (Skipped ${importedEntries.length - newUniqueEntries.length} duplicates) from ${file.name}`);
           } catch (err) {
               console.error(err);
               alert("Failed to parse Excel file.");
@@ -187,7 +178,6 @@ export const DataEntries: React.FC = () => {
       reader.readAsBinaryString(file);
   };
 
-  // --- Excel Export Logic with Sr No & Formatting ---
   const prepareDataForSheet = (data: WorkerEntry[]) => {
       return data.map((entry, index) => ({
           "Sr No": index + 1,
@@ -210,22 +200,11 @@ export const DataEntries: React.FC = () => {
     // @ts-ignore
     const XLSX = window.XLSX;
     
-    // 1. Prepare Master Sheet Data (Sorted by Date descending)
-    const masterData = prepareDataForSheet([...entries].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    
-    // 2. Prepare Daily Sheets (Grouped by Date)
-    const grouped: Record<string, any[]> = {};
-    entries.forEach(entry => {
-        if (!grouped[entry.date]) grouped[entry.date] = [];
-        grouped[entry.date].push(entry);
-    });
-
     const wb = XLSX.utils.book_new();
 
-    // Add Master Sheet
+    const masterData = prepareDataForSheet([...entries].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     const wsMaster = XLSX.utils.json_to_sheet(masterData);
     
-    // Basic Column Widths
     const wscols = [
         { wch: 6 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 6 }, 
         { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 30 }
@@ -234,7 +213,12 @@ export const DataEntries: React.FC = () => {
     
     XLSX.utils.book_append_sheet(wb, wsMaster, "Master Database");
 
-    // Add Daily Sheets
+    const grouped: Record<string, any[]> = {};
+    entries.forEach(entry => {
+        if (!grouped[entry.date]) grouped[entry.date] = [];
+        grouped[entry.date].push(entry);
+    });
+
     Object.keys(grouped).sort().reverse().forEach(date => {
         const sheetData = prepareDataForSheet(grouped[date]);
         const wsDaily = XLSX.utils.json_to_sheet(sheetData);
@@ -242,11 +226,9 @@ export const DataEntries: React.FC = () => {
         XLSX.utils.book_append_sheet(wb, wsDaily, date);
     });
 
-    // Write File
     XLSX.writeFile(wb, `Bhattis_Worker_Database_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // --- Filtering ---
   const filteredEntries = entries.filter(e => 
       e.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       e.trade.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -254,179 +236,180 @@ export const DataEntries: React.FC = () => {
   );
 
   return (
-    <div className="w-full min-h-screen p-6 md:p-12 max-w-[1800px] mx-auto animate-fade-in flex flex-col xl:flex-row gap-8">
+    <div className="data-layout animate-fade-in">
       
       {/* LEFT: Data Entry Form */}
-      <div className="w-full xl:w-1/3 space-y-6">
-        <div className="bg-[#0f172a] border border-white/10 p-6 rounded-2xl shadow-xl sticky top-24">
-            <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
-                <div className="p-2 bg-[#00f3ff]/10 rounded-lg">
-                    <Database className="w-6 h-6 text-[#00f3ff]" />
+      <div className="data-form">
+        <div className="card" style={{ position: 'sticky', top: '6rem' }}>
+            <div className="flex items-center gap-2 mb-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
+                <div style={{ padding: '0.5rem', background: 'rgba(0,243,255,0.1)', borderRadius: '0.5rem' }}>
+                    <Database size={24} color="var(--color-cyan)" />
                 </div>
-                <h2 className="text-xl font-bold text-white">Data Entry</h2>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white' }}>Data Entry</h2>
             </div>
 
-            <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-xs text-slate-400 font-bold uppercase">Name *</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Name *</label>
                         <div className="relative">
-                            <input name="name" value={formData.name} onChange={handleInputChange} className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 pl-9 text-white focus:border-[#00f3ff] outline-none" placeholder="Full Name" />
-                            <User className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
+                            <input name="name" value={formData.name} onChange={handleInputChange} className="input-field" style={{ paddingLeft: '2.5rem' }} placeholder="Full Name" />
+                            <User size={16} style={{ position: 'absolute', left: '0.75rem', top: '0.9rem', color: '#64748b' }} />
                         </div>
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-xs text-slate-400 font-bold uppercase">Father Name</label>
-                        <input name="fatherName" value={formData.fatherName} onChange={handleInputChange} className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-white focus:border-[#00f3ff] outline-none" placeholder="Father Name" />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Father Name</label>
+                        <input name="fatherName" value={formData.fatherName} onChange={handleInputChange} className="input-field" placeholder="Father Name" />
                     </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-1 col-span-1">
-                        <label className="text-xs text-slate-400 font-bold uppercase">Age</label>
-                        <input name="age" type="number" value={formData.age} onChange={handleInputChange} className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-white focus:border-[#00f3ff] outline-none" placeholder="25" />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Age</label>
+                        <input name="age" type="number" value={formData.age} onChange={handleInputChange} className="input-field" placeholder="25" />
                     </div>
-                    <div className="space-y-1 col-span-2">
-                         <label className="text-xs text-slate-400 font-bold uppercase">Phone 1 *</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                         <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Phone 1 *</label>
                          <div className="relative">
-                            <input name="phone1" value={formData.phone1} onChange={handleInputChange} className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 pl-9 text-white focus:border-[#00f3ff] outline-none" placeholder="0300-1234567" />
-                            <Phone className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
+                            <input name="phone1" value={formData.phone1} onChange={handleInputChange} className="input-field" style={{ paddingLeft: '2.5rem' }} placeholder="0300-1234567" />
+                            <Phone size={16} style={{ position: 'absolute', left: '0.75rem', top: '0.9rem', color: '#64748b' }} />
                          </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
-                     <div className="space-y-1">
-                         <label className="text-xs text-slate-400 font-bold uppercase">Trade *</label>
-                         <div className="relative">
-                            <input list="trades-list" name="trade" value={formData.trade} onChange={handleInputChange} className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 pl-9 text-white focus:border-[#00f3ff] outline-none" placeholder="Select or Type Trade" />
-                            <Briefcase className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
-                            <datalist id="trades-list">
-                                {TRADES.map(t => <option key={t} value={t} />)}
-                            </datalist>
-                         </div>
-                    </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                     <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Trade *</label>
+                     <div className="relative">
+                        <input list="trades-list" name="trade" value={formData.trade} onChange={handleInputChange} className="input-field" style={{ paddingLeft: '2.5rem' }} placeholder="Select or Type Trade" />
+                        <Briefcase size={16} style={{ position: 'absolute', left: '0.75rem', top: '0.9rem', color: '#64748b' }} />
+                        <datalist id="trades-list">
+                            {TRADES.map(t => <option key={t} value={t} />)}
+                        </datalist>
+                     </div>
                 </div>
 
                 {/* Location Cascading Dropdowns */}
-                <div className="space-y-3 p-4 bg-slate-800/50 rounded-xl border border-white/5">
-                    <label className="text-xs text-[#00f3ff] font-bold uppercase flex items-center gap-2"><MapPin className="w-3 h-3"/> Address Details</label>
-                    <div className="grid grid-cols-2 gap-3">
-                         <select name="province" value={formData.province} onChange={handleInputChange} className="bg-slate-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-[#00f3ff] outline-none">
+                <div style={{ padding: '1rem', background: 'rgba(30,41,59,0.5)', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--color-cyan)', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MapPin size={12}/> Address Details</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                         <select name="province" value={formData.province} onChange={handleInputChange} className="input-field">
                              <option value="">Select Province</option>
                              {Object.keys(LOCATIONS).map(p => <option key={p} value={p}>{p}</option>)}
                          </select>
-                         <select name="district" value={formData.district} onChange={handleInputChange} disabled={!formData.province} className="bg-slate-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-[#00f3ff] outline-none disabled:opacity-50">
+                         <select name="district" value={formData.district} onChange={handleInputChange} disabled={!formData.province} className="input-field" style={{ opacity: !formData.province ? 0.5 : 1 }}>
                              <option value="">Select District</option>
                              {formData.province && Object.keys(LOCATIONS[formData.province]).map(d => <option key={d} value={d}>{d}</option>)}
                          </select>
                     </div>
-                    <select name="city" value={formData.city} onChange={handleInputChange} disabled={!formData.district} className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-[#00f3ff] outline-none disabled:opacity-50">
+                    <select name="city" value={formData.city} onChange={handleInputChange} disabled={!formData.district} className="input-field" style={{ opacity: !formData.district ? 0.5 : 1 }}>
                          <option value="">Select City</option>
                          {formData.district && LOCATIONS[formData.province][formData.district].map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                 </div>
 
-                <div className="space-y-1">
-                    <label className="text-xs text-slate-400 font-bold uppercase">Remarks</label>
-                    <textarea name="remarks" value={formData.remarks} onChange={handleInputChange} className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-white focus:border-[#00f3ff] outline-none h-20 resize-none" placeholder="Any additional notes..." />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Remarks</label>
+                    <textarea name="remarks" value={formData.remarks} onChange={handleInputChange} className="input-field" style={{ height: '5rem', resize: 'none' }} placeholder="Any additional notes..." />
                 </div>
 
                 <button 
                     onClick={handleSaveEntry}
-                    className="w-full py-4 bg-[#00f3ff] hover:bg-[#00c2cc] text-black font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(0,243,255,0.4)] flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+                    className="btn-primary"
+                    style={{ width: '100%', marginTop: '1rem' }}
                 >
-                    <Save className="w-5 h-5" /> SAVE & UPDATE
+                    <Save size={20} /> SAVE & UPDATE
                 </button>
             </div>
         </div>
       </div>
 
       {/* RIGHT: Data Table & Actions */}
-      <div className="flex-1 space-y-6">
+      <div className="data-table-container">
           
           {/* Actions Bar */}
-          <div className="bg-[#0f172a] border border-white/10 p-4 rounded-2xl shadow-xl flex flex-col md:flex-row gap-4 justify-between items-center sticky top-24 z-20">
-              <div className="relative w-full md:w-64">
-                  <input 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search name, trade, phone..."
-                    className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 pl-10 text-white focus:border-[#00f3ff] outline-none"
-                  />
-                  <Search className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
-              </div>
+          <div className="card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', position: 'sticky', top: '6rem', zIndex: 20 }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                  <div className="relative" style={{ width: '100%', maxWidth: '16rem' }}>
+                      <input 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Search..."
+                        className="input-field"
+                        style={{ paddingLeft: '2.5rem' }}
+                      />
+                      <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '0.9rem', color: '#64748b' }} />
+                  </div>
 
-              <div className="flex items-center gap-3">
-                  {/* File Upload Hidden */}
-                  <input 
-                    type="file" 
-                    accept=".xlsx, .xls" 
-                    ref={fileInputRef} 
-                    className="hidden"
-                    onChange={handleImportExcel}
-                  />
-                  <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-3 border border-white/10 hover:bg-white/5 text-slate-300 font-bold rounded-lg flex items-center gap-2 transition-colors"
-                    title="Import existing Excel sheet"
-                  >
-                     <Upload className="w-4 h-4" /> Import Master
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                      <input 
+                        type="file" 
+                        accept=".xlsx, .xls" 
+                        ref={fileInputRef} 
+                        className="hidden"
+                        onChange={handleImportExcel}
+                      />
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{ padding: '0.75rem 1rem', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#cbd5e1', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.875rem' }}
+                        title="Import existing Excel sheet"
+                      >
+                         <Upload size={16} /> Import
+                      </button>
 
-                  <button 
-                    onClick={exportAllSheets}
-                    className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg flex items-center gap-2 transition-colors shadow-lg"
-                  >
-                     <FileSpreadsheet className="w-4 h-4" /> Export All Sheets
-                  </button>
+                      <button 
+                        onClick={exportAllSheets}
+                        style={{ padding: '0.75rem 1rem', background: 'var(--color-green)', color: 'white', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.875rem' }}
+                      >
+                         <FileSpreadsheet size={16} /> Export Sheets
+                      </button>
+                  </div>
               </div>
+              
+              {importStatus && (
+                  <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', color: 'var(--color-green)', padding: '0.75rem', borderRadius: '0.75rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <AlertCircle size={16} /> {importStatus}
+                  </div>
+              )}
           </div>
 
-          {importStatus && (
-              <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-3 rounded-xl text-sm flex items-center gap-2 animate-fade-in">
-                  <AlertCircle className="w-4 h-4" /> {importStatus}
-              </div>
-          )}
-
           {/* Table */}
-          <div className="bg-[#0f172a] border border-white/10 rounded-2xl shadow-xl overflow-hidden">
-             <div className="overflow-x-auto">
-                 <table className="w-full text-left text-sm text-slate-300">
-                     <thead className="bg-slate-900 text-xs uppercase font-bold text-slate-400">
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+             <div style={{ overflowX: 'auto' }}>
+                 <table className="data-table">
+                     <thead style={{ background: 'var(--color-slate-900)' }}>
                          <tr>
-                             <th className="p-4 border-b border-white/10 w-16">Sr No</th>
-                             <th className="p-4 border-b border-white/10">Date</th>
-                             <th className="p-4 border-b border-white/10">Name</th>
-                             <th className="p-4 border-b border-white/10">Trade</th>
-                             <th className="p-4 border-b border-white/10">Contact</th>
-                             <th className="p-4 border-b border-white/10">Location</th>
-                             <th className="p-4 border-b border-white/10 text-right">Action</th>
+                             <th>Sr No</th>
+                             <th>Date</th>
+                             <th>Name</th>
+                             <th>Trade</th>
+                             <th>Contact</th>
+                             <th>Location</th>
+                             <th style={{ textAlign: 'right' }}>Action</th>
                          </tr>
                      </thead>
-                     <tbody className="divide-y divide-white/5">
+                     <tbody>
                          {filteredEntries.map((entry, index) => (
-                             <tr key={entry.id} className="hover:bg-white/5 transition-colors">
-                                 <td className="p-4 text-slate-500">{entries.length - index}</td>
-                                 <td className="p-4 font-mono text-xs text-slate-500">{entry.date}</td>
-                                 <td className="p-4 font-bold text-white">{entry.name} <span className="text-xs font-normal text-slate-500 block">{entry.fatherName}</span></td>
-                                 <td className="p-4">
-                                     <span className="px-2 py-1 bg-[#00f3ff]/10 text-[#00f3ff] rounded border border-[#00f3ff]/30 text-xs font-bold">
+                             <tr key={entry.id}>
+                                 <td style={{ color: 'var(--color-text-muted)' }}>{entries.length - index}</td>
+                                 <td style={{ fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{entry.date}</td>
+                                 <td style={{ color: 'white', fontWeight: 700 }}>{entry.name} <span style={{ display: 'block', fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>{entry.fatherName}</span></td>
+                                 <td>
+                                     <span style={{ padding: '0.25rem 0.5rem', background: 'rgba(0,243,255,0.1)', color: 'var(--color-cyan)', borderRadius: '0.25rem', border: '1px solid rgba(0,243,255,0.3)', fontSize: '0.75rem', fontWeight: 700 }}>
                                          {entry.trade}
                                      </span>
                                  </td>
-                                 <td className="p-4">{entry.phone1}</td>
-                                 <td className="p-4 text-xs">{entry.city}, {entry.province}</td>
-                                 <td className="p-4 text-right">
-                                     <button onClick={() => handleDelete(entry.id)} className="text-red-500 hover:text-red-400 p-2 hover:bg-red-500/10 rounded-lg transition-colors">
-                                         <Trash2 className="w-4 h-4" />
+                                 <td>{entry.phone1}</td>
+                                 <td style={{ fontSize: '0.75rem' }}>{entry.city}, {entry.province}</td>
+                                 <td style={{ textAlign: 'right' }}>
+                                     <button onClick={() => handleDelete(entry.id)} style={{ color: 'var(--color-red)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.5rem' }}>
+                                         <Trash2 size={16} />
                                      </button>
                                  </td>
                              </tr>
                          ))}
                          {filteredEntries.length === 0 && (
                              <tr>
-                                 <td colSpan={8} className="p-12 text-center text-slate-500 italic">
+                                 <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
                                      No entries found.
                                  </td>
                              </tr>
@@ -436,7 +419,7 @@ export const DataEntries: React.FC = () => {
              </div>
           </div>
 
-          <div className="text-center text-slate-500 text-xs">
+          <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '1rem' }}>
               Total Records: {entries.length} | Database stored locally in your browser.
           </div>
       </div>

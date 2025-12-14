@@ -18,36 +18,84 @@ export const Intro: React.FC<IntroProps> = ({ onComplete }) => {
 
   return (
     <div 
-      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#020617] transition-all duration-700 ease-in-out ${
-        stage === 3 ? 'opacity-0 pointer-events-none' : 'opacity-100'
-      }`}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 100,
+        backgroundColor: '#020617',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'opacity 0.7s ease',
+        opacity: stage === 3 ? 0 : 1,
+        pointerEvents: stage === 3 ? 'none' : 'auto'
+      }}
     >
-      <div className="relative flex flex-col items-center">
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {/* Glow Effects */}
-        <div className={`absolute -inset-20 rounded-full bg-[#00f3ff] opacity-10 blur-[100px] transition-all duration-1000 ${stage >= 1 ? 'scale-150 opacity-20' : 'scale-50 opacity-0'}`}></div>
+        <div style={{
+            position: 'absolute',
+            inset: '-5rem',
+            borderRadius: '50%',
+            backgroundColor: 'var(--color-cyan)',
+            filter: 'blur(100px)',
+            transition: 'all 1s',
+            opacity: stage >= 1 ? 0.2 : 0,
+            transform: stage >= 1 ? 'scale(1.5)' : 'scale(0.5)'
+        }}></div>
         
-        <div className="flex flex-col items-center">
-          <h1 className={`text-6xl md:text-8xl font-display font-bold tracking-tighter transition-all duration-1000 transform flex gap-4 ${
-            stage >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`}>
-            <span className="text-white">BHATTI'S</span>
-            <span className="text-[#00f3ff]" style={{ textShadow: '0 0 30px rgba(0,243,255,0.5)' }}>AI</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 10 }}>
+          <h1 style={{
+              fontSize: '4rem',
+              fontWeight: 800,
+              letterSpacing: '-0.05em',
+              transition: 'all 1s',
+              display: 'flex',
+              gap: '1rem',
+              opacity: stage >= 1 ? 1 : 0,
+              transform: stage >= 1 ? 'translateY(0)' : 'translateY(40px)',
+              fontFamily: 'var(--font-display)'
+          }}>
+            <span style={{ color: 'white' }}>BHATTI'S</span>
+            <span style={{ color: 'var(--color-cyan)', textShadow: '0 0 30px rgba(0,243,255,0.5)' }}>AI</span>
           </h1>
           
-          <div className="overflow-hidden mt-4">
-             <p className={`text-slate-400 text-lg tracking-[0.3em] font-mono font-bold uppercase transition-all duration-700 delay-200 transform ${
-               stage >= 1 ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-             }`}>
+          <div style={{ overflow: 'hidden', marginTop: '1rem' }}>
+             <p style={{
+                 color: 'var(--text-muted)',
+                 fontSize: '1.125rem',
+                 letterSpacing: '0.3em',
+                 fontFamily: 'monospace',
+                 fontWeight: 700,
+                 textTransform: 'uppercase',
+                 transition: 'all 0.7s 0.2s',
+                 transform: stage >= 1 ? 'translateY(0)' : 'translateY(100%)',
+                 opacity: stage >= 1 ? 1 : 0
+             }}>
                INITIALIZING SUITE
              </p>
           </div>
         </div>
 
         {/* Loading Line */}
-        <div className="mt-12 h-1 w-48 bg-[#1e293b] rounded-full overflow-hidden relative">
-          <div className={`absolute inset-0 bg-[#FFD700] transition-all duration-[1500ms] ease-out shadow-[0_0_10px_#FFD700] ${
-            stage >= 2 ? 'w-full' : 'w-0'
-          }`}></div>
+        <div style={{
+            marginTop: '3rem',
+            height: '4px',
+            width: '12rem',
+            backgroundColor: '#1e293b',
+            borderRadius: '99px',
+            overflow: 'hidden',
+            position: 'relative'
+        }}>
+          <div style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundColor: 'var(--color-gold)',
+              transition: 'width 1.5s ease-out',
+              boxShadow: '0 0 10px var(--color-gold)',
+              width: stage >= 2 ? '100%' : '0%'
+          }}></div>
         </div>
       </div>
     </div>
