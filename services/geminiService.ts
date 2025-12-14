@@ -57,6 +57,35 @@ export const generateText = async (prompt: string, context?: string): Promise<st
   }
 };
 
+export const validateIdentityFormat = async (value: string, type: 'CNIC' | 'PASSPORT'): Promise<{ isValid: boolean, message: string }> => {
+  try {
+    const ai = getClient();
+    const prompt = `
+      You are a strict Data Validation AI.
+      Check if this value is a valid format for a Pakistani ${type}.
+      
+      Value: "${value}"
+      
+      Rules:
+      - CNIC: Must be 13 digits, usually formatted 12345-1234567-1.
+      - Passport: Pakistani Passport usually starts with 1-2 letters followed by 7 digits.
+      
+      Return ONLY a JSON object: { "isValid": boolean, "message": "Short reason" }
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: { responseMimeType: 'application/json' }
+    });
+
+    const text = response.text || "{}";
+    return JSON.parse(text);
+  } catch (e) {
+    return { isValid: false, message: "AI Validation Failed" };
+  }
+};
+
 export const generateImageDescription = async (base64Image: string, mimeType: string): Promise<string> => {
    try {
     const ai = getClient();
@@ -79,7 +108,8 @@ export const generateImageDescription = async (base64Image: string, mimeType: st
 export const generateIdentityPhoto = async (base64Image: string, mimeType: string): Promise<string> => {
   try {
     const ai = getClient();
-    const model = 'gemini-2.5-flash-image';
+    // Using Nano Banana Pro for speed and quality
+    const model = 'gemini-3-pro-image-preview';
     
     const prompt = `
     Edit this user's photo to be a perfect professional passport-style headshot.
@@ -126,7 +156,8 @@ export const generateIdentityPhoto = async (base64Image: string, mimeType: strin
 export const generateEnhancedDocument = async (base64Image: string, mimeType: string): Promise<string[]> => {
   try {
     const ai = getClient();
-    const model = 'gemini-2.5-flash-image';
+    // Using Nano Banana Pro for speed and quality
+    const model = 'gemini-3-pro-image-preview';
     
     const prompt = `
     You are an advanced Computer Vision AI specializing in Document Extraction.
@@ -266,42 +297,41 @@ export const generateCvHtml = async (cvData: any, userInstruction: string = ""):
   };
 
   const prompt = `
-  You are an elite AI CV Architect & Renderer with a master-level understanding of Typography and Color Theory.
+  You are an elite AI CV Architect & Renderer with a master-level understanding of CSS Grid, Typography, and Color Theory.
 
   **CORE OBJECTIVE**: 
-  Transform the provided User Data (JSON) into a visually flawless, high-contrast, professional HTML5 CV.
+  Transform the provided User Data (JSON) into a visually flawless, high-contrast, professional HTML5 CV for a PDF export.
   
-  **DESIGN SEED**: ${layoutId}
+  **DESIGN SEED**: ${layoutId} (Use this to deterministically select a UNIQUE layout structure).
   **TARGET ROLE**: ${jobRole}
   **USER REQUEST**: "${userInstruction}"
 
-  **STRICT VISUAL & READABILITY RULES (MANDATORY)**:
-  1. **INTELLIGENT CONTRAST ENFORCEMENT (WCAG AAA)**:
-     - **Rule 1**: If you create a Sidebar or Header with a **Dark Background** (e.g., #0f172a, #1e3a8a, #000000), the Text Color inside it **MUST be #FFFFFF** (White).
-     - **Rule 2**: If the Background is **Light** (e.g., #FFFFFF, #F1F5F9), the Text Color **MUST be Dark** (#0f172a, #334155).
-     - **Rule 3**: NEVER use light gray text on a white background. Minimum contrast ratio 7:1.
-     - **Rule 4**: Prevent text from touching edges. Ensure adequate padding (min 15px) inside colored blocks.
+  **CRITICAL CONTRAST & READABILITY RULES (AI MUST VALIDATE)**:
+  1. **Background/Text Contrast**: 
+     - IF background is DARK (e.g., #1a202c, #003366), text MUST be WHITE (#ffffff).
+     - IF background is LIGHT (e.g., #ffffff, #f7fafc), text MUST be DARK (#1a202c).
+     - **NEVER** place gray text on a colored background.
+  2. **Section Distinctiveness**: Use clear headers with distinct colors or background bands to separate Contact, Education, and Experience.
+  3. **No Overflow**: Ensure the layout fits comfortably on an A4 page. Adjust font sizes (10pt-12pt for body) automatically to fit content.
 
-  2. **TEMPLATE ENGINE LOGIC (MASTER LAYOUTS)**:
-     - Based on the Seed, deterministically select and perfectly render one of these Professional Archetypes:
-       - **The Executive**: Double-column, Navy Blue/Dark Grey header, Serif fonts (Merriweather), authoritative.
-       - **The Modernist**: Clean sans-serif (Inter/Roboto), subtle gray accents, very high whitespace, minimal.
-       - **The Creative Pro**: Bold Left Sidebar (Dark deep color like Teal/Purple/Black), white text on sidebar, dark text on main body.
-       - **The Ivy League**: Classic, centered name, horizontal dividers, Times New Roman, strictly black & white.
-       - **The Tech Lead**: Dark Mode elements or Monospace accents, clean grid system.
-     - **LAYOUT INTEGRITY**: Ensure the layout is **COMPLETE**. Do not cut off the bottom. If content overflows, handle it gracefully. The CV should look finished.
+  **TEMPLATE ENGINE LOGIC (MASTER LAYOUTS)**:
+  Based on the Seed, choose one of these styles but ensure it's **COMPLETE**:
+  - **Modern Split**: 1/3 Left Sidebar (Dark background, White Text) for Contact/Skills, 2/3 Right (White background, Dark Text) for Experience.
+  - **Classic Header**: Top full-width header (accent color), body content in clean single or double columns.
+  - **Minimalist Grid**: Clean whitespace, subtle borders, elegant serif fonts for headings.
+  - **Executive**: Dark Navy or Charcoal accents, highly structured, very formal.
 
-  3. **CONTENT FIDELITY & COMPLETION**:
-     - **Render EVERY item** in the Experience and Education arrays. Do not skip older jobs.
-     - **Zero Hallucination**: Do not invent dates or companies.
-     - **Smart Details**: If the input JSON has empty 'details' for a job/degree, you **MUST** generate 3 professional, role-appropriate bullet points. If 'details' are provided, use them VERBATIM.
+  **CONTENT RULES**:
+  - **Render EVERY item** in Experience/Education. Do not summarize or skip.
+  - If details are empty, generate 3 professional bullet points relevant to the role.
+  - **Photo**: Render the photo as a circle or rounded square with a border.
 
-  **TECHNICAL OUTPUT SPECIFICATIONS**:
-  - Return **ONLY** raw HTML string. No markdown code blocks.
+  **TECHNICAL OUTPUT**:
+  - Return **ONLY** raw HTML string.
   - Embed CSS in \`<style>\` tags.
-  - Page Size: \`width: 210mm; min-height: 297mm; background: white;\`.
-  - Photo Handling: Use \`src="[[PHOTO_PLACEHOLDER]]"\`. Style it (circle/square/rounded) based on the design.
-  - Fonts: Import professional Google Fonts.
+  - Use \`@page { size: A4; margin: 0; }\` in CSS.
+  - Body width must be 210mm. Min-height 297mm.
+  - Image Src: Use \`[[PHOTO_PLACEHOLDER]]\` for the user photo.
 
   **INPUT DATA**:
   ${JSON.stringify(aiAnalysisData, null, 2)}
@@ -348,63 +378,49 @@ export const generateCvHtml = async (cvData: any, userInstruction: string = ""):
   return text;
 };
 
-export const generateAdHtml = async (adData: any): Promise<string> => {
+export const generateAdHtml = async (adData: any, customInstruction: string = ""): Promise<string> => {
   const ai = getClient();
   const seed = Date.now();
   const jobCount = adData.jobs.length;
   
-  // Logic to determine layout density to ensure it fits in 1080px
-  let cols = 2;
-  if (jobCount === 1) cols = 1;
-  else if (jobCount > 4) cols = 3;
-  
-  // Calculate approximate row height constraints for the prompt
-  const isHighDensity = jobCount > 5;
-
   const prompt = `
   You are a World-Class Graphic Designer for Social Media Advertising.
   
   **TASK**: Create a High-Impact, **SQUARE (1080x1080px)** Recruitment Ad in HTML.
   
-  **STRICT CONSTRAINT**: The ad MUST be exactly 1080px height. **NO OVERFLOW OR SCROLLING**. Everything must fit perfectly.
+  **DYNAMIC TEMPLATE SEED**: ${seed} (CRITICAL: Use this to create a COMPELTELY DIFFERENT LAYOUT from previous generations).
+  **USER CUSTOM INSTRUCTION**: "${customInstruction}"
   
-  **DESIGN DIRECTION**: "Modern International Agency".
-  - **Colors**: Deep Royal Blue, Metallic Gold, and White.
-  - **Style**: High Contrast, Professional, Clean.
-  - **Fonts**: 'Montserrat', 'Roboto', sans-serif (Google Fonts).
+  **DESIGN VARIATION RULES (MANDATORY)**:
+  - **Layout**: Do NOT always use a standard grid. Randomize between:
+    - **Split Screen**: Image on left/top, text on right/bottom.
+    - **Overlay**: Full background image with semi-transparent text blocks.
+    - **Asymmetric**: Header diagonal, job list floating.
+    - **Card Grid**: Classic grid but with unique card shapes (rounded, skewed).
+  - **Color Palette**: Select a professional palette based on the "Company" or random (e.g., Deep Blue/Gold, Red/Black, Teal/White).
+  - **Typography**: Vary font pairings (Serif headers with Sans body, or Bold Condensed headers).
 
-  **LAYOUT STRUCTURE (Flexbox/Grid - Total Height 1080px)**:
-  
-  1. **HEADER (Fixed ~150px)**:
-     - Background: Gradient (Gold/Blue).
-     - Text: "URGENT REQUIREMENT FOR ${adData.country.toUpperCase()}" (Bold, Large).
-     - Sub-text: "${adData.company}".
+  **STRICT CONSTRAINT**: The ad MUST be exactly 1080px height x 1080px width. **NO OVERFLOW OR SCROLLING**. Everything must fit perfectly.
 
-  2. **JOB GRID (Fills Remaining Space)**:
-     - Use \`display: grid\`.
-     - Columns: ${cols}.
-     - **Gap**: ${isHighDensity ? '10px' : '20px'}.
-     - **Card Style**: White background, rounded corners, shadow.
-     - **Image Height**: ${isHighDensity ? '100px' : '180px'}. Use \`object-fit: cover\`.
-     - **Typography**: Adjust font size so all ${jobCount} jobs fit. If many jobs, use smaller fonts (14px).
-
-  3. **FOOTER (Fixed ~120px)**:
-     - Background: Dark Navy.
-     - Content: "BRING DOCUMENTS TO OFFICE", "Rana Trade Test Center – Attock", "0572603447".
+  **CONTENT REQUIREMENTS**:
+  1. **Header**: "URGENT REQUIREMENT FOR ${adData.country.toUpperCase()}" + "${adData.company}".
+  2. **Job List**: Display ${jobCount} jobs.
+     - For each job, show Title, Salary, Count.
+     - Include a high-quality Action Shot Image.
+  3. **Footer**: "BRING DOCUMENTS TO OFFICE", "Rana Trade Test Center – Attock", "0572603447".
 
   **DATA TO RENDER**:
   ${JSON.stringify(adData.jobs)}
 
   **IMAGE GENERATION**:
-  - For EACH job in the list, use an image tag with this specific URL format:
-    \`https://image.pollinations.ai/prompt/photorealistic%20high%20quality%20photo%20of%20a%20professional%20{JOB_TITLE_ENCODED}%20worker%20site%20uniform?width=400&height=300&nologo=true&seed=${seed}\`
-  - **IMPORTANT**: You MUST replace \`{JOB_TITLE_ENCODED}\` with the actual job title from the data (URL encoded).
-  - Example: If title is "Pipe Fitter", URL is \`...photo%20of%20a%20professional%20Pipe%20Fitter%20worker...\`.
+  For EACH job card, generate a custom <img> tag using Pollinations AI:
+  \`https://image.pollinations.ai/prompt/cinematic%20photo%20of%20{ACTION_DESCRIPTION}%20professional%20uniform%20high%20detail?width=600&height=600&nologo=true&seed=${seed}&model=flux\`
+  
+  - Replace {ACTION_DESCRIPTION} with a person actively doing the job (e.g. "plumber fixing pipe").
 
   **TECHNICAL OUTPUT**:
   - Return **ONLY** raw HTML with embedded CSS.
-  - Container \`#ad-container\` must have \`width: 1080px; height: 1080px; overflow: hidden; display: flex; flex-direction: column;\`.
-  - Grid should have \`flex: 1; overflow: hidden;\`.
+  - Container \`#ad-container\` must have \`width: 1080px; height: 1080px; overflow: hidden;\`.
   `;
 
   let text = "";

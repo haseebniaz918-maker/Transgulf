@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Megaphone, Plus, Trash2, Download, Briefcase, MapPin, Building2, Zap, Globe, Banknote, Users, RefreshCw } from 'lucide-react';
+import { Megaphone, Plus, Trash2, Download, Briefcase, MapPin, Building2, Zap, Globe, Banknote, Users, RefreshCw, Sparkles, Command, Loader2 } from 'lucide-react';
 import { generateAdHtml } from '../services/geminiService';
 
 interface JobEntry {
@@ -11,6 +11,7 @@ interface JobEntry {
 export const AdsMaker: React.FC = () => {
   const [country, setCountry] = useState('');
   const [company, setCompany] = useState('');
+  const [customPrompt, setCustomPrompt] = useState(''); 
   const [jobs, setJobs] = useState<JobEntry[]>([{ title: '', salary: '', count: '' }]);
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -60,7 +61,7 @@ export const AdsMaker: React.FC = () => {
       let match;
       const promises: Promise<void>[] = [];
       
-      setLoadingText("RENDERING VISUALS...");
+      setLoadingText("RENDERING ACTION SHOTS...");
 
       while ((match = regex.exec(htmlContent)) !== null) {
           const src = match[1];
@@ -85,7 +86,7 @@ export const AdsMaker: React.FC = () => {
     }
     
     setIsGenerating(true);
-    setLoadingText("AI ARCHITECTING LAYOUT...");
+    setLoadingText("AI VISUALIZING JOBS...");
     setGeneratedHtml(null); 
     
     try {
@@ -93,7 +94,7 @@ export const AdsMaker: React.FC = () => {
         country,
         company,
         jobs: jobs.filter(j => j.title.trim())
-      });
+      }, customPrompt);
       
       // Wait for images to actually load in browser memory before showing
       await preloadImages(html);
@@ -136,7 +137,8 @@ export const AdsMaker: React.FC = () => {
                   width: 1080,
                   height: 1080,
                   logging: false,
-                  backgroundColor: '#ffffff'
+                  backgroundColor: '#ffffff',
+                  allowTaint: true
               });
 
               const link = document.createElement('a');
@@ -162,7 +164,7 @@ export const AdsMaker: React.FC = () => {
             <Megaphone className="text-[#00f3ff] w-10 h-10 animate-pulse" /> 
             ADS <span className="text-[#00f3ff] drop-shadow-[0_0_15px_rgba(0,243,255,0.8)]">MAKER</span>
           </h1>
-          <p className="text-slate-400 mt-2">Create viral, professional square job ads (12:12) with AI-matched imagery for every vacancy.</p>
+          <p className="text-slate-400 mt-2">Create viral, professional square job ads (12:12) with <span className="text-[#00f3ff] font-bold">Action-Shot AI Imagery</span> for every vacancy.</p>
         </div>
 
         <section className="bg-[#0f172a]/50 border border-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm relative overflow-hidden group hover:border-[#00f3ff]/30 transition-all duration-500 animate-slide-up" style={{ animationDelay: '200ms' }}>
@@ -259,6 +261,23 @@ export const AdsMaker: React.FC = () => {
                     ))}
                 </div>
             </div>
+
+            {/* AI Custom Prompt Area */}
+            <div className="mt-4 pt-4 border-t border-white/10 relative z-10">
+                <label className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-[#00f3ff]" /> AI Custom Instruction (Optional)
+                </label>
+                <div className="relative">
+                    <input 
+                        value={customPrompt}
+                        onChange={(e) => setCustomPrompt(e.target.value)}
+                        placeholder="e.g. Make the background red, Add a '50% OFF' badge, Use futuristic fonts..."
+                        className="w-full bg-slate-900 border border-white/10 rounded-xl p-3 pl-10 text-white focus:border-[#00f3ff] focus:shadow-[0_0_20px_rgba(0,243,255,0.2)] focus:outline-none transition-all duration-300"
+                    />
+                    <Command className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
+                </div>
+            </div>
+
         </section>
 
         <button 
@@ -270,7 +289,7 @@ export const AdsMaker: React.FC = () => {
             <div className="absolute inset-0 bg-white/40 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
             {isGenerating ? (
                 <>
-                   <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                   <Loader2 className="w-6 h-6 animate-spin text-black" />
                    <span className="relative z-10 font-mono">{loadingText}</span>
                 </>
             ) : (
@@ -290,7 +309,7 @@ export const AdsMaker: React.FC = () => {
             ref={containerRef}
             className={`w-full max-w-[550px] aspect-square bg-slate-900 border-4 ${isGenerating ? 'border-[#00f3ff] shadow-[0_0_60px_rgba(0,243,255,0.3)] animate-pulse' : 'border-[#00f3ff]/30 shadow-[0_0_40px_rgba(0,243,255,0.15)]'} rounded-[30px] overflow-hidden relative transition-all duration-500 ease-in-out`}
          >
-            {generatedHtml ? (
+            {!isGenerating && generatedHtml ? (
                 <div 
                     style={{ 
                         width: '1080px', 
@@ -346,14 +365,14 @@ export const AdsMaker: React.FC = () => {
                             <p className="text-lg relative z-10 font-medium max-w-[300px]">
                                 Fill in the details to generate a <span className="text-[#00f3ff]">12:12 (1080px) Square Ad</span>.
                             </p>
-                            <p className="text-xs text-slate-600 relative z-10">Preview will scale perfectly to this box.</p>
+                            <p className="text-xs text-slate-600 relative z-10">Images will be <b>Action Shots</b> (e.g. Plumber fixing pipe).</p>
                         </div>
                     )}
                 </div>
             )}
          </div>
 
-         {generatedHtml && (
+         {!isGenerating && generatedHtml && (
              <div className="flex gap-4 animate-pop-in">
                  <button 
                     onClick={() => setGeneratedHtml(null)}

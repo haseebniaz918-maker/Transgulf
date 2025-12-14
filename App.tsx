@@ -7,6 +7,7 @@ import { IdentityLab } from './components/IdentityLab';
 import { CvForge } from './components/CvForge';
 import { Nomination } from './components/Nomination';
 import { AdsMaker } from './components/AdsMaker';
+import { DataEntries } from './components/DataEntries';
 import { Section } from './types';
 
 export default function App() {
@@ -26,8 +27,8 @@ export default function App() {
         return <Nomination />;
       case Section.ADS_MAKER:
         return <AdsMaker />;
-      case Section.WAFID_INTEL:
-         return <AiSection type={Section.CODE_STUDIO} />;
+      case Section.DATA_ENTRIES:
+        return <DataEntries />;
       default:
         return <PdfTools />;
     }

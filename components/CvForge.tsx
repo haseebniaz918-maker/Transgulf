@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FileText, Plus, Trash2, Zap, Briefcase, GraduationCap, User, Globe, Download, Sparkles, Target, AlertTriangle, Eraser, Layout, PenTool, ArrowRight } from 'lucide-react';
-import { generateCvHtml, generateIdentityPhoto, helperFileToBase64 } from '../services/geminiService';
+import { FileText, Plus, Trash2, Zap, Briefcase, GraduationCap, User, Globe, Download, Sparkles, Target, AlertTriangle, Eraser, Layout, PenTool, ArrowRight, ZoomIn, ZoomOut, Move, Maximize2, Check, Loader2 } from 'lucide-react';
+import { generateCvHtml, generateIdentityPhoto, helperFileToBase64, validateIdentityFormat } from '../services/geminiService';
 
 interface Education {
   degree: string;
@@ -22,44 +22,57 @@ const RELIGIONS = ["Islam", "Christianity", "Hinduism", "Sikhism", "Buddhism", "
 const MARITAL_STATUS = ["Single", "Married", "Divorced", "Widowed"];
 const NATIONALITIES = ["Pakistan", "Saudi Arabia", "UAE", "United Kingdom", "USA", "Canada", "India", "Bangladesh", "Other"];
 
-// Expanded Major Cities for Datalist
-const MAJOR_CITIES = [
-  "Karachi", "Lahore", "Islamabad", "Rawalpindi", "Faisalabad", "Multan", "Peshawar", "Quetta", "Sialkot", "Gujranwala",
-  "Riyadh", "Jeddah", "Mecca", "Medina", "Dammam", "Khobar",
-  "Dubai", "Abu Dhabi", "Sharjah", "Ajman", "Al Ain",
-  "London", "Manchester", "Birmingham", "Leeds", "Glasgow", "Liverpool",
-  "New York", "Los Angeles", "Chicago", "Houston", "Miami", "San Francisco", "Seattle",
-  "Toronto", "Vancouver", "Montreal", "Ottawa",
-  "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai",
-  "Dhaka", "Chittagong", "Sylhet",
-  "Istanbul", "Ankara", "Izmir",
-  "Paris", "Lyon", "Marseille",
-  "Berlin", "Munich", "Frankfurt",
-  "Tokyo", "Osaka", "Kyoto",
-  "Sydney", "Melbourne", "Brisbane"
-];
+// Province & City Data
+const PAKISTAN_LOCATIONS: Record<string, string[]> = {
+  "Punjab": [
+    "Lahore", "Faisalabad", "Rawalpindi", "Multan", "Gujranwala", "Sialkot", "Sargodha", "Bahawalpur", "Gujarat", 
+    "Sheikhupura", "Jhelum", "Attock", "Sahiwal", "Okara", "Kasur", "Rahim Yar Khan", "Muzaffargarh", "Vehari"
+  ],
+  "Sindh": [
+    "Karachi", "Hyderabad", "Sukkur", "Larkana", "Nawabshah", "Mirpur Khas", "Jacobabad", "Shikarpur", "Khairpur"
+  ],
+  "Khyber Pakhtunkhwa": [
+    "Peshawar", "Mardan", "Swat", "Abbottabad", "Mansehra", "Kohat", "Bannu", "D.I. Khan", "Haripur", "Nowshera"
+  ],
+  "Balochistan": [
+    "Quetta", "Gwadar", "Turbat", "Khuzdar", "Chaman", "Sibi", "Zhob", "Loralai"
+  ],
+  "Islamabad": ["Islamabad"],
+  "Azad Kashmir": ["Muzaffarabad", "Mirpur", "Rawalakot", "Kotli", "Bhimber"],
+  "Gilgit-Baltistan": ["Gilgit", "Skardu", "Hunza", "Chilas"]
+};
 
 // --- Input Component ---
 const InputField = ({ 
-  label, name, value, onChange, type = "text", placeholder, error, maxLength, list 
+  label, name, value, onChange, type = "text", placeholder, error, maxLength, list, onVerify 
 }: { 
-  label: string, name: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void, type?: string, placeholder?: string, error?: string, maxLength?: number, list?: string 
+  label: string, name: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void, type?: string, placeholder?: string, error?: string, maxLength?: number, list?: string, onVerify?: () => void
 }) => (
   <div className="flex flex-col gap-1 relative">
     <label className="text-xs text-slate-400 font-bold uppercase tracking-wider flex justify-between">
       {label}
       {error && <span className="text-red-400 text-[10px] flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> {error}</span>}
     </label>
-    <input
-      type={type}
-      name={name}
-      value={value}
-      onChange={onChange}
-      maxLength={maxLength}
-      list={list}
-      className={`bg-slate-900/50 border ${error ? 'border-red-500' : 'border-white/10'} rounded-lg p-3 text-sm text-white focus:border-[#00f3ff] focus:outline-none transition-colors placeholder-slate-600`}
-      placeholder={placeholder || `Enter ${label}`}
-    />
+    <div className="relative">
+        <input
+          type={type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          maxLength={maxLength}
+          list={list}
+          className={`w-full bg-slate-900/50 border ${error ? 'border-red-500' : 'border-white/10'} rounded-lg p-3 text-sm text-white focus:border-[#00f3ff] focus:outline-none transition-colors placeholder-slate-600`}
+          placeholder={placeholder || `Enter ${label}`}
+        />
+        {onVerify && value && !error && (
+            <button 
+                onClick={onVerify} 
+                className="absolute right-2 top-2 p-1 bg-[#00f3ff]/10 hover:bg-[#00f3ff]/20 text-[#00f3ff] rounded-md text-[10px] font-bold transition-all border border-[#00f3ff]/30"
+            >
+                AI Check
+            </button>
+        )}
+    </div>
   </div>
 );
 
@@ -89,6 +102,7 @@ export const CvForge: React.FC = () => {
     dob: '',
     cnic: '',
     passportNo: '',
+    province: '', // Added Province
     placeOfBirth: '',
     passportIssueDate: '',
     passportExpiryDate: '',
@@ -126,7 +140,12 @@ export const CvForge: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<any>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
-  const [previewScale, setPreviewScale] = useState(1);
+  const [baseScale, setBaseScale] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   // --- Persistence Logic ---
@@ -168,7 +187,7 @@ export const CvForge: React.FC = () => {
       setJobRole('');
       setPersonalInfo({
         name: '', fatherName: '', religion: '', nationality: '', dob: '', cnic: '', 
-        passportNo: '', placeOfBirth: '', passportIssueDate: '', passportExpiryDate: '', 
+        passportNo: '', province: '', placeOfBirth: '', passportIssueDate: '', passportExpiryDate: '', 
         maritalStatus: '', address: '', phone: '', email: ''
       });
       setEducation([{ degree: '', school: '', yearFrom: '', yearTo: '', details: '' }]);
@@ -188,7 +207,7 @@ export const CvForge: React.FC = () => {
         // We add some padding/margin awareness
         const targetWidth = 794; 
         const newScale = Math.min(containerWidth / targetWidth, 1);
-        setPreviewScale(newScale - 0.05); // slightly smaller to ensure borders visible
+        setBaseScale(newScale - 0.05); // slightly smaller to ensure borders visible
       }
     };
 
@@ -204,6 +223,33 @@ export const CvForge: React.FC = () => {
       window.removeEventListener('resize', updateScale);
     };
   }, []);
+
+  // --- Pan & Zoom Handlers ---
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey) {
+       e.preventDefault();
+       const delta = e.deltaY > 0 ? 0.9 : 1.1;
+       setZoomLevel(z => Math.min(Math.max(0.5, z * delta), 3));
+    }
+  };
+
+  const startPan = (e: React.MouseEvent) => {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const doPan = (e: React.MouseEvent) => {
+      if (isDragging) {
+          setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+      }
+  };
+
+  const endPan = () => setIsDragging(false);
+
+  const resetView = () => {
+      setZoomLevel(1);
+      setPan({ x: 0, y: 0 });
+  };
 
   // --- Typing Animation Logic ---
   const handleAnyInput = () => {
@@ -235,6 +281,12 @@ export const CvForge: React.FC = () => {
     const { name, value } = e.target;
     let finalValue = value;
     let errorMsg = '';
+    
+    // Reset city if province changes
+    if (name === 'province') {
+        setPersonalInfo(prev => ({ ...prev, province: value, placeOfBirth: '' }));
+        return;
+    }
 
     // 1. CNIC Formatting
     if (name === 'cnic') {
@@ -278,6 +330,24 @@ export const CvForge: React.FC = () => {
 
     setErrors(prev => ({...prev, [name]: errorMsg}));
     setPersonalInfo(prev => ({ ...prev, [name]: finalValue }));
+  };
+
+  const handleAiValidation = async (type: 'CNIC' | 'PASSPORT') => {
+      const value = type === 'CNIC' ? personalInfo.cnic : personalInfo.passportNo;
+      if (!value) return;
+      
+      const btn = document.activeElement as HTMLButtonElement;
+      if (btn) btn.innerText = "...";
+
+      const res = await validateIdentityFormat(value, type);
+      
+      if (!res.isValid) {
+          setErrors(prev => ({ ...prev, [type === 'CNIC' ? 'cnic' : 'passportNo']: res.message }));
+      } else {
+          setErrors(prev => ({ ...prev, [type === 'CNIC' ? 'cnic' : 'passportNo']: '' }));
+          alert(`${type} format is Valid!`);
+      }
+      if (btn) btn.innerText = "AI Check";
   };
 
   const handleEduChange = (index: number, field: keyof Education, value: string) => {
@@ -365,6 +435,7 @@ export const CvForge: React.FC = () => {
 
       setIsGenerating(true);
       setPreviewHtml(null); // Clear preview to trigger transition animation
+      resetView();
       
       try {
         const cleanExperience = experience.filter(e => e.designation); 
@@ -452,10 +523,6 @@ export const CvForge: React.FC = () => {
       
       {/* LEFT: Input Form */}
       <div className="flex-1 space-y-8 pb-20 max-w-4xl">
-         {/* ... (Existing Input Form Content) ... */}
-         {/* Skipping implementation details of input form for brevity as they are unchanged. 
-             In real patch, I'd include the whole component or be precise. 
-             Since the user provided full file, I will provide full file. */}
         <div className="mb-6 flex justify-between items-end">
           <div>
             <h1 className="text-4xl font-display font-bold text-white flex items-center gap-3">
@@ -504,24 +571,52 @@ export const CvForge: React.FC = () => {
                   <SelectField label="Religion" name="religion" value={personalInfo.religion} onChange={handleInfoChange} options={RELIGIONS} />
                   <SelectField label="Nationality" name="nationality" value={personalInfo.nationality} onChange={handleInfoChange} options={NATIONALITIES} />
                   <InputField label="Date of Birth" name="dob" value={personalInfo.dob} onChange={handleInfoChange} type="date" error={errors.dob} />
-                  <InputField label="CNIC No" name="cnic" value={personalInfo.cnic} onChange={handleInfoChange} placeholder="XXXXX-XXXXXXX-X" maxLength={15} error={errors.cnic} />
-                  <InputField label="Passport No" name="passportNo" value={personalInfo.passportNo} onChange={handleInfoChange} placeholder="AB1234567" maxLength={9} error={errors.passportNo} />
+                  <InputField 
+                    label="CNIC No" 
+                    name="cnic" 
+                    value={personalInfo.cnic} 
+                    onChange={handleInfoChange} 
+                    placeholder="XXXXX-XXXXXXX-X" 
+                    maxLength={15} 
+                    error={errors.cnic}
+                    onVerify={() => handleAiValidation('CNIC')} 
+                  />
+                  <InputField 
+                    label="Passport No" 
+                    name="passportNo" 
+                    value={personalInfo.passportNo} 
+                    onChange={handleInfoChange} 
+                    placeholder="AB1234567" 
+                    maxLength={9} 
+                    error={errors.passportNo}
+                    onVerify={() => handleAiValidation('PASSPORT')}
+                  />
                   
-                  {/* City Datalist */}
+                  {/* Province Selection */}
+                  <SelectField 
+                    label="Province" 
+                    name="province" 
+                    value={personalInfo.province} 
+                    onChange={handleInfoChange} 
+                    options={Object.keys(PAKISTAN_LOCATIONS)} 
+                  />
+
+                  {/* City Datalist - Dependent on Province */}
                   <div>
                       <div className="flex flex-col gap-1 relative">
                         <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Place of Birth</label>
-                        <input
-                          list="major-cities"
+                        <select
                           name="placeOfBirth"
                           value={personalInfo.placeOfBirth}
                           onChange={handleInfoChange}
-                          className="bg-slate-900/50 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-[#00f3ff] outline-none"
-                          placeholder="Type to search..."
-                        />
-                        <datalist id="major-cities">
-                           {MAJOR_CITIES.map(city => <option key={city} value={city} />)}
-                        </datalist>
+                          disabled={!personalInfo.province}
+                          className="bg-slate-900/50 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-[#00f3ff] focus:outline-none transition-colors appearance-none cursor-pointer disabled:opacity-50"
+                        >
+                            <option value="" disabled>Select City</option>
+                            {personalInfo.province && PAKISTAN_LOCATIONS[personalInfo.province]?.map(city => (
+                                <option key={city} value={city}>{city}</option>
+                            ))}
+                        </select>
                       </div>
                   </div>
 
@@ -648,25 +743,51 @@ export const CvForge: React.FC = () => {
              )}
         </div>
 
-        {/* Live Preview Container with Smart Scaling */}
+        {/* Live Preview Container with Advanced Scaling & Controls */}
         <div 
           ref={previewContainerRef}
-          className="w-full bg-[#0a0f1e] rounded-xl shadow-2xl overflow-hidden relative border-4 border-[#0f172a] aspect-[210/297] flex items-center justify-center"
+          className="w-full bg-[#0a0f1e] rounded-xl shadow-2xl overflow-hidden relative border-4 border-[#0f172a] aspect-[210/297] group"
+          onWheel={handleWheel}
+          onMouseDown={startPan}
+          onMouseMove={doPan}
+          onMouseUp={endPan}
+          onMouseLeave={endPan}
+          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
         >
+             {/* Interactive Controls Overlay */}
+             {previewHtml && (
+                <div className="absolute top-4 right-4 flex flex-col gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-md p-1.5 rounded-lg border border-white/10">
+                    <button onClick={() => setZoomLevel(z => Math.min(3, z + 0.2))} className="p-2 text-white hover:bg-white/10 rounded" title="Zoom In"><ZoomIn className="w-4 h-4" /></button>
+                    <button onClick={() => setZoomLevel(z => Math.max(0.5, z - 0.2))} className="p-2 text-white hover:bg-white/10 rounded" title="Zoom Out"><ZoomOut className="w-4 h-4" /></button>
+                    <button onClick={resetView} className="p-2 text-white hover:bg-white/10 rounded" title="Reset View"><Maximize2 className="w-4 h-4" /></button>
+                </div>
+             )}
+
              {previewHtml ? (
-                 <iframe 
-                    srcDoc={previewHtml}
-                    className="border-none bg-white origin-top animate-pop-in"
-                    title="CV Preview"
-                    style={{ 
-                        width: '210mm', 
-                        height: '297mm',
-                        transform: `scale(${previewScale})`,
-                        marginBottom: `-${(297 * (1 - previewScale))}mm` // Correct loose space
-                    }} 
-                 />
+                 <div 
+                    className="w-full h-full flex items-center justify-center bg-[#2c2f36]"
+                 >
+                     <div
+                        style={{
+                            transform: `translate(${pan.x}px, ${pan.y}px) scale(${baseScale * zoomLevel})`,
+                            transformOrigin: 'center',
+                            transition: isDragging ? 'none' : 'transform 0.2s ease-out'
+                        }}
+                     >
+                        <iframe 
+                            srcDoc={previewHtml}
+                            className="border-none bg-white pointer-events-none" // pointer-events-none to allow drag on top
+                            title="CV Preview"
+                            style={{ 
+                                width: '210mm', 
+                                height: '297mm',
+                                boxShadow: '0 0 50px rgba(0,0,0,0.5)'
+                            }} 
+                        />
+                     </div>
+                 </div>
              ) : (
-                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-900/50 relative overflow-hidden">
+                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-900/50 relative overflow-hidden pointer-events-none">
                      {/* Background Grid */}
                      <div className="absolute inset-0 opacity-10" 
                           style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '20px 20px' }} 
@@ -710,7 +831,7 @@ export const CvForge: React.FC = () => {
                             </div>
                             
                             <div className="absolute bottom-6 left-6 flex items-center gap-2 text-[#00f3ff] text-xs font-bold tracking-widest z-20">
-                                <Zap className="w-3 h-3 animate-pulse" /> AI GENERATING LAYOUT...
+                                <Loader2 className="w-3 h-3 animate-spin" /> AI ARCHITECTING CV...
                             </div>
                         </div>
                      ) : (

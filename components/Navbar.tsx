@@ -1,6 +1,6 @@
 import React from 'react';
 import { Section } from '../types';
-import { Zap, Grid, Fingerprint, FileText, QrCode, Activity, Megaphone } from 'lucide-react';
+import { Zap, Grid, Fingerprint, FileText, QrCode, Database, Megaphone } from 'lucide-react';
 
 interface NavbarProps {
   currentSection: Section;
@@ -14,7 +14,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentSection, onNavigate }) =>
     { id: Section.CV_FORGE, label: 'CV Forge', icon: FileText },
     { id: Section.NOMINATION, label: 'Nomination', icon: QrCode },
     { id: Section.ADS_MAKER, label: 'Ads Maker', icon: Megaphone },
-    { id: Section.WAFID_INTEL, label: 'Wafid Intel', icon: Activity },
+    { id: Section.DATA_ENTRIES, label: 'Data Entries', icon: Database }, // Updated
   ];
 
   return (
@@ -31,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentSection, onNavigate }) =>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="hidden md:flex items-center gap-2 bg-[#0f172a] p-1.5 rounded-full border border-white/5">
+      <div className="hidden lg:flex items-center gap-2 bg-[#0f172a] p-1.5 rounded-full border border-white/5 overflow-x-auto">
         {navItems.map((item) => {
           const isActive = currentSection === item.id;
           return (
@@ -39,7 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentSection, onNavigate }) =>
               key={item.id}
               onClick={() => onNavigate(item.id)}
               className={`
-                flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300
+                flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 whitespace-nowrap
                 ${isActive 
                   ? 'bg-[#00f3ff] text-black shadow-[0_0_20px_rgba(0,243,255,0.3)]' 
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -54,8 +54,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentSection, onNavigate }) =>
       </div>
 
       {/* Mobile Menu Icon (Placeholder) */}
-      <div className="md:hidden">
-        <div className="w-8 h-8 bg-white/10 rounded-full"></div>
+      <div className="lg:hidden">
+        <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">
+            <Grid className="w-5 h-5 text-white"/>
+        </div>
       </div>
     </nav>
   );
