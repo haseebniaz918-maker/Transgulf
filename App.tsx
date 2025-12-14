@@ -38,47 +38,23 @@ export default function App() {
       {!introComplete && <Intro onComplete={() => setIntroComplete(true)} />}
       
       <div 
-        className="app-container" 
-        style={{ 
-            opacity: introComplete ? 1 : 0, 
-            transition: 'opacity 1s ease-in-out',
-            minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column'
-        }}
+        className={`min-h-screen flex flex-col transition-opacity duration-1000 ${introComplete ? 'opacity-100' : 'opacity-0'}`}
       >
         <Navbar 
           currentSection={activeSection} 
           onNavigate={setActiveSection} 
         />
         
-        <main style={{ position: 'relative', flex: 1 }}>
+        <main className="relative flex-1">
           {/* Ambient Background Glows */}
-          <div style={{
-            position: 'fixed',
-            top: '5rem',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '800px',
-            height: '400px',
-            background: 'radial-gradient(circle, rgba(0, 243, 255, 0.1) 0%, transparent 70%)',
-            pointerEvents: 'none',
-            zIndex: 0
-          }}></div>
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-cyan-400/10 blur-[120px] rounded-full pointer-events-none z-0 mix-blend-screen"></div>
           
-          <div className="animate-fade-in" style={{ position: 'relative', zIndex: 1, padding: '1.5rem', maxWidth: '1600px', margin: '0 auto' }}>
+          <div className="relative z-10 p-6 max-w-[1600px] mx-auto animate-fade-in">
             {renderContent()}
           </div>
         </main>
 
-        <footer style={{ 
-            textAlign: 'center', 
-            padding: '2rem', 
-            color: 'var(--text-muted)', 
-            fontSize: '0.875rem', 
-            borderTop: '1px solid var(--border-light)',
-            marginTop: 'auto'
-        }}>
+        <footer className="mt-auto border-t border-white/5 py-8 text-center text-sm text-slate-500">
           &copy; 2024 Bhatti's AI Tools. All rights reserved.
         </footer>
       </div>

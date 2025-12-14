@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Megaphone, MapPin, Building2, Briefcase, Plus, Trash2, Sparkles, Command, Loader2, Download, RefreshCw } from 'lucide-react';
 import { generateAdHtml } from '../services/geminiService';
 
 export const AdsMaker: React.FC = () => {
@@ -18,25 +17,33 @@ export const AdsMaker: React.FC = () => {
   };
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="flex flex-col gap-8 max-w-7xl mx-auto animate-fade-in pb-20">
        <div className="text-center">
-           <h1 className="text-neon" style={{ fontSize: '3rem', fontWeight: 700 }}>ADS MAKER</h1>
+           <h1 className="text-5xl font-bold text-cyan-400 font-display drop-shadow-[0_0_15px_rgba(0,243,255,0.4)]">ADS MAKER</h1>
        </div>
 
-       <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-           <div style={{ flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-               <div className="card">
-                   <h3 style={{ color: 'white', marginBottom: '1rem' }}>Details</h3>
-                   <input className="input-field" placeholder="Country" value={country} onChange={e => setCountry(e.target.value)} />
+       <div className="flex flex-wrap gap-8">
+           <div className="flex-1 min-w-[300px] flex flex-col gap-6">
+               <div className="glass-card p-6 rounded-2xl">
+                   <h3 className="text-white mb-4 font-bold">Details</h3>
+                   <input 
+                      className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-cyan-400 focus:outline-none" 
+                      placeholder="Country" 
+                      value={country} 
+                      onChange={e => setCountry(e.target.value)} 
+                   />
                </div>
-               <button onClick={handleGenerate} className="btn btn-primary" style={{ padding: '1.5rem' }}>
+               <button 
+                  onClick={handleGenerate} 
+                  className="w-full py-6 bg-cyan-400 hover:bg-[#00c2cc] text-black font-bold rounded-2xl text-xl shadow-neon transition-all hover:-translate-y-1"
+               >
                    {isGenerating ? 'GENERATING...' : 'CREATE AD'}
                </button>
            </div>
 
-           <div style={{ flex: 1, minWidth: '300px', display: 'flex', justifyContent: 'center' }}>
-               <div style={{ width: '500px', height: '500px', background: '#0a0f1e', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                   {generatedHtml ? <iframe srcDoc={generatedHtml} style={{ width: '100%', height: '100%', border: 'none' }} /> : <span className="text-muted">Ad Preview</span>}
+           <div className="flex-1 min-w-[300px] flex justify-center">
+               <div className="w-[500px] h-[500px] bg-slate-900 border border-white/10 flex items-center justify-center rounded-2xl overflow-hidden shadow-2xl">
+                   {generatedHtml ? <iframe srcDoc={generatedHtml} className="w-full h-full border-none" /> : <span className="text-slate-500">Ad Preview</span>}
                </div>
            </div>
        </div>

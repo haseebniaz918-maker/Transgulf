@@ -18,29 +18,35 @@ export const Navbar: React.FC<NavbarProps> = ({ currentSection, onNavigate }) =>
   ];
 
   return (
-    <nav className="navbar">
+    <nav className="h-20 sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-8">
       {/* Logo Section */}
-      <div className="flex items-center gap-2">
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <Zap size={28} color="#FFD700" fill="#FFD700" />
-          <div style={{ position: 'absolute', inset: 0, background: '#FFD700', filter: 'blur(12px)', opacity: 0.4 }}></div>
+      <div className="flex items-center gap-3">
+        <div className="relative flex items-center justify-center">
+          <Zap size={28} className="text-gold fill-gold relative z-10" />
+          <div className="absolute inset-0 bg-gold blur-xl opacity-40"></div>
         </div>
-        <div style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>
-          <span style={{ color: 'white' }}>BHATTI'S</span> <span style={{ color: 'var(--color-cyan)' }}>AI TOOLS</span>
+        <div className="text-xl font-bold font-display tracking-tight">
+          <span className="text-white">BHATTI'S</span> <span className="text-cyan-400">AI TOOLS</span>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="nav-tabs">
+      <div className="flex gap-1 bg-slate-900/80 p-1.5 rounded-full border border-white/5 overflow-x-auto max-w-[60vw]">
         {navItems.map((item) => {
           const isActive = currentSection === item.id;
           return (
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`nav-item ${isActive ? 'active' : ''}`}
+              className={`
+                px-5 py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-all duration-300 whitespace-nowrap
+                ${isActive 
+                  ? 'bg-cyan-400 text-black shadow-neon' 
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }
+              `}
             >
-              <item.icon size={16} color={isActive ? 'black' : 'currentColor'} />
+              <item.icon size={16} className={isActive ? 'text-black' : 'currentColor'} />
               {item.label}
             </button>
           );

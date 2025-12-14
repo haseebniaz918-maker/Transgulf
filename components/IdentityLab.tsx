@@ -48,78 +48,84 @@ export const IdentityLab: React.FC = () => {
   };
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <div className="text-center" style={{ marginBottom: '3rem' }}>
-        <div style={{ display: 'inline-flex', padding: '1rem', borderRadius: '50%', background: 'rgba(255,0,255,0.1)', border: '1px solid rgba(255,0,255,0.3)', marginBottom: '1.5rem', boxShadow: '0 0 30px rgba(255,0,255,0.2)' }}>
-          <Fingerprint size={40} color="#ff00ff" />
+    <div className="max-w-6xl mx-auto animate-fade-in">
+      <div className="text-center mb-12">
+        <div className="inline-flex p-4 rounded-full bg-pink-500/10 border border-pink-500/30 mb-6 shadow-neon-pink">
+          <Fingerprint size={40} className="text-pink-400" />
         </div>
-        <h1 style={{ fontSize: '3rem', fontWeight: 700, color: 'white', marginBottom: '1rem' }}>
-          IDENTITY <span style={{ color: '#ff00ff', textShadow: '0 0 20px #ff00ff' }}>LAB</span>
+        <h1 className="text-5xl font-bold text-white mb-4 font-display">
+          IDENTITY <span className="text-pink-400 drop-shadow-[0_0_20px_rgba(255,0,255,0.5)]">LAB</span>
         </h1>
-        <p className="text-muted" style={{ maxWidth: '40rem', margin: '0 auto', fontSize: '1.125rem' }}>
+        <p className="text-slate-400 max-w-2xl mx-auto text-lg">
           AI-powered professional identity enhancement. Upload a casual photo and get a DSLR-quality passport photo with professional attire.
         </p>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '500px' }}>
+      <div className="flex flex-col items-center min-h-[500px]">
         
         {!originalImage ? (
-          <div className="upload-box" style={{ width: '100%', maxWidth: '36rem', borderColor: 'rgba(255,0,255,0.3)' }} onClick={() => document.getElementById('id-upload')?.click()}>
+          <div 
+            className="w-full max-w-2xl border-2 border-dashed border-pink-500/30 rounded-3xl p-16 flex flex-col items-center justify-center text-center cursor-pointer hover:border-pink-500 hover:bg-pink-500/5 transition-all group"
+            onClick={() => document.getElementById('id-upload')?.click()}
+          >
             <input id="id-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-            <div style={{ width: '5rem', height: '5rem', borderRadius: '50%', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
-              <Upload size={32} color="#ff00ff" />
+            <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform">
+              <Upload size={32} className="text-pink-400" />
             </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', marginBottom: '0.5rem' }}>Upload Photo</h3>
-            <p className="text-muted">Drag & drop or click to browse</p>
+            <h3 className="text-xl font-bold text-white mb-2">Upload Photo</h3>
+            <p className="text-slate-400">Drag & drop or click to browse</p>
           </div>
         ) : (!generatedImageBase64 && !isProcessing) ? (
-          <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', width: '100%' }}>
-            <div style={{ position: 'relative', width: '100%', maxWidth: '20rem', aspectRatio: '3/4', borderRadius: '1rem', overflow: 'hidden', border: '1px solid rgba(255,0,255,0.3)', boxShadow: '0 0 30px rgba(0,0,0,0.5)' }}>
-              <img src={URL.createObjectURL(originalImage)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <button onClick={() => setOriginalImage(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(0,0,0,0.6)', border: 'none', color: 'white', borderRadius: '50%', padding: '0.5rem', cursor: 'pointer' }}>
+          <div className="flex flex-col items-center gap-8 animate-slide-up w-full">
+            <div className="relative w-full max-w-xs aspect-[3/4] rounded-2xl overflow-hidden border border-pink-500/30 shadow-2xl">
+              <img src={URL.createObjectURL(originalImage)} className="w-full h-full object-cover" />
+              <button onClick={() => setOriginalImage(null)} className="absolute top-4 right-4 bg-black/60 text-white p-2 rounded-full hover:bg-black/80 transition-colors">
                 <X size={20} />
               </button>
             </div>
             
             {errorMessage && (
-                <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div className="p-4 bg-red-500/10 border border-red-500/30 text-red-300 rounded-xl flex items-center gap-2">
                     <AlertCircle size={20} /> {errorMessage}
                 </div>
             )}
 
-            <button onClick={processImage} className="btn" style={{ background: '#ff00ff', color: 'black', boxShadow: '0 0 20px rgba(255,0,255,0.4)', padding: '1rem 3rem', fontSize: '1.125rem' }}>
-                <Sparkles size={24} fill="black" /> ENHANCE IDENTITY
+            <button 
+                onClick={processImage} 
+                className="bg-pink-500 hover:bg-pink-400 text-black font-bold py-4 px-12 rounded-xl shadow-neon-pink transition-all hover:-translate-y-1 flex items-center gap-3 text-lg"
+            >
+                <Sparkles size={24} className="fill-black" /> ENHANCE IDENTITY
             </button>
           </div>
         ) : (
-          <div className="animate-pop-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3rem', width: '100%' }}>
-             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '2rem', width: '100%' }}>
+          <div className="flex flex-col items-center gap-12 w-full animate-pop-in">
+             <div className="flex flex-wrap justify-center gap-8 md:gap-16 w-full items-center">
                 
                 {/* Original */}
-                <div style={{ position: 'relative', width: '18rem', aspectRatio: '3/4', borderRadius: '1rem', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <img src={URL.createObjectURL(originalImage)} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: isProcessing ? 'grayscale(100%) opacity(0.5)' : 'none' }} />
-                    <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(0,0,0,0.6)', padding: '0.25rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700, color: 'white' }}>ORIGINAL</div>
+                <div className="relative w-72 aspect-[3/4] rounded-2xl overflow-hidden border border-white/10 group">
+                    <img src={URL.createObjectURL(originalImage)} className={`w-full h-full object-cover transition-all duration-700 ${isProcessing ? 'grayscale opacity-50' : ''}`} />
+                    <div className="absolute top-4 left-4 bg-black/60 px-3 py-1 rounded-lg text-xs font-bold text-white">ORIGINAL</div>
                     {isProcessing && (
-                        <div style={{ position: 'absolute', top: '50%', left: 0, width: '100%', height: '2px', background: '#ff00ff', boxShadow: '0 0 15px #ff00ff', animation: 'slideUp 2s infinite linear alternate' }}></div>
+                        <div className="absolute top-0 left-0 w-full h-1 bg-pink-500 shadow-[0_0_15px_#ff00ff] animate-slide-up"></div>
                     )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', color: '#ff00ff' }} className="hidden sm:flex">
+                <div className="hidden md:flex text-pink-400">
                     <ArrowRight size={32} />
                 </div>
 
                 {/* Result */}
-                <div style={{ position: 'relative', width: '18rem', aspectRatio: '3/4', borderRadius: '1rem', overflow: 'hidden', border: '2px solid #ff00ff', boxShadow: '0 0 30px rgba(255,0,255,0.2)' }}>
+                <div className="relative w-72 aspect-[3/4] rounded-2xl overflow-hidden border-2 border-pink-500 shadow-neon-pink">
                     {isProcessing ? (
-                        <div style={{ width: '100%', height: '100%', background: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#ff00ff' }}>
-                            <div className="animate-spin" style={{ width: '3rem', height: '3rem', border: '3px solid rgba(255,0,255,0.3)', borderTopColor: '#ff00ff', borderRadius: '50%', marginBottom: '1rem' }}></div>
-                            <span style={{ fontSize: '0.875rem', letterSpacing: '0.1em' }}>ENHANCING...</span>
+                        <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-pink-400 gap-4">
+                            <div className="w-12 h-12 border-4 border-pink-500/30 border-t-pink-500 rounded-full animate-spin"></div>
+                            <span className="text-sm font-bold tracking-widest animate-pulse">ENHANCING...</span>
                         </div>
                     ) : (
                         <>
-                            <img src={`data:image/png;base64,${generatedImageBase64}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: 'rgba(255,0,255,0.8)', padding: '0.25rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 700, color: 'white', display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                                <Sparkles size={12} fill="white" /> ENHANCED
+                            <img src={`data:image/png;base64,${generatedImageBase64}`} className="w-full h-full object-cover" />
+                            <div className="absolute top-4 left-4 bg-pink-500/90 px-3 py-1 rounded-lg text-xs font-bold text-white flex items-center gap-1">
+                                <Sparkles size={12} className="fill-white" /> ENHANCED
                             </div>
                         </>
                     )}
@@ -127,11 +133,11 @@ export const IdentityLab: React.FC = () => {
              </div>
 
              {!isProcessing && (
-                 <div style={{ display: 'flex', gap: '1rem' }}>
-                     <button onClick={() => { setGeneratedImageBase64(null); setOriginalImage(null); }} className="btn btn-secondary">
+                 <div className="flex gap-4">
+                     <button onClick={() => { setGeneratedImageBase64(null); setOriginalImage(null); }} className="px-6 py-3 border border-white/10 rounded-xl text-white hover:bg-white/5 flex items-center gap-2 font-bold transition-all">
                         <RefreshCw size={20} /> New Scan
                      </button>
-                     <button onClick={handleDownload} className="btn" style={{ background: '#ff00ff', color: 'black', padding: '0.75rem 2rem' }}>
+                     <button onClick={handleDownload} className="px-8 py-3 bg-pink-500 hover:bg-pink-400 text-black rounded-xl font-bold shadow-neon-pink transition-all flex items-center gap-2">
                         <Download size={20} /> Download
                      </button>
                  </div>

@@ -236,52 +236,52 @@ export const DataEntries: React.FC = () => {
   );
 
   return (
-    <div className="data-layout animate-fade-in">
+    <div className="flex flex-col xl:flex-row gap-8 animate-fade-in pb-20">
       
       {/* LEFT: Data Entry Form */}
-      <div className="data-form">
-        <div className="card" style={{ position: 'sticky', top: '6rem' }}>
-            <div className="flex items-center gap-2 mb-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
-                <div style={{ padding: '0.5rem', background: 'rgba(0,243,255,0.1)', borderRadius: '0.5rem' }}>
-                    <Database size={24} color="var(--color-cyan)" />
+      <div className="flex-1 xl:max-w-md">
+        <div className="glass-card p-6 rounded-2xl sticky top-24">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                <div className="p-2 bg-cyan-400/10 rounded-lg">
+                    <Database size={24} className="text-cyan-400" />
                 </div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white' }}>Data Entry</h2>
+                <h2 className="text-xl font-bold text-white">Data Entry</h2>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Name *</label>
+            <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Name *</label>
                         <div className="relative">
-                            <input name="name" value={formData.name} onChange={handleInputChange} className="input-field" style={{ paddingLeft: '2.5rem' }} placeholder="Full Name" />
-                            <User size={16} style={{ position: 'absolute', left: '0.75rem', top: '0.9rem', color: '#64748b' }} />
+                            <input name="name" value={formData.name} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="Full Name" />
+                            <User size={16} className="absolute left-3 top-2.5 text-slate-500" />
                         </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Father Name</label>
-                        <input name="fatherName" value={formData.fatherName} onChange={handleInputChange} className="input-field" placeholder="Father Name" />
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Father Name</label>
+                        <input name="fatherName" value={formData.fatherName} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="Father Name" />
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Age</label>
-                        <input name="age" type="number" value={formData.age} onChange={handleInputChange} className="input-field" placeholder="25" />
+                <div className="grid grid-cols-[1fr_2fr] gap-4">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Age</label>
+                        <input name="age" type="number" value={formData.age} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="25" />
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                         <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Phone 1 *</label>
+                    <div className="flex flex-col gap-1">
+                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone 1 *</label>
                          <div className="relative">
-                            <input name="phone1" value={formData.phone1} onChange={handleInputChange} className="input-field" style={{ paddingLeft: '2.5rem' }} placeholder="0300-1234567" />
-                            <Phone size={16} style={{ position: 'absolute', left: '0.75rem', top: '0.9rem', color: '#64748b' }} />
+                            <input name="phone1" value={formData.phone1} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="0300-1234567" />
+                            <Phone size={16} className="absolute left-3 top-2.5 text-slate-500" />
                          </div>
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                     <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Trade *</label>
+                <div className="flex flex-col gap-1">
+                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trade *</label>
                      <div className="relative">
-                        <input list="trades-list" name="trade" value={formData.trade} onChange={handleInputChange} className="input-field" style={{ paddingLeft: '2.5rem' }} placeholder="Select or Type Trade" />
-                        <Briefcase size={16} style={{ position: 'absolute', left: '0.75rem', top: '0.9rem', color: '#64748b' }} />
+                        <input list="trades-list" name="trade" value={formData.trade} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="Select or Type Trade" />
+                        <Briefcase size={16} className="absolute left-3 top-2.5 text-slate-500" />
                         <datalist id="trades-list">
                             {TRADES.map(t => <option key={t} value={t} />)}
                         </datalist>
@@ -289,33 +289,32 @@ export const DataEntries: React.FC = () => {
                 </div>
 
                 {/* Location Cascading Dropdowns */}
-                <div style={{ padding: '1rem', background: 'rgba(30,41,59,0.5)', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--color-cyan)', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MapPin size={12}/> Address Details</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                         <select name="province" value={formData.province} onChange={handleInputChange} className="input-field">
+                <div className="p-4 bg-slate-900/50 rounded-xl border border-white/5 flex flex-col gap-3">
+                    <label className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2"><MapPin size={12}/> Address Details</label>
+                    <div className="grid grid-cols-2 gap-3">
+                         <select name="province" value={formData.province} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-400 outline-none">
                              <option value="">Select Province</option>
                              {Object.keys(LOCATIONS).map(p => <option key={p} value={p}>{p}</option>)}
                          </select>
-                         <select name="district" value={formData.district} onChange={handleInputChange} disabled={!formData.province} className="input-field" style={{ opacity: !formData.province ? 0.5 : 1 }}>
+                         <select name="district" value={formData.district} onChange={handleInputChange} disabled={!formData.province} className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-400 outline-none disabled:opacity-50">
                              <option value="">Select District</option>
                              {formData.province && Object.keys(LOCATIONS[formData.province]).map(d => <option key={d} value={d}>{d}</option>)}
                          </select>
                     </div>
-                    <select name="city" value={formData.city} onChange={handleInputChange} disabled={!formData.district} className="input-field" style={{ opacity: !formData.district ? 0.5 : 1 }}>
+                    <select name="city" value={formData.city} onChange={handleInputChange} disabled={!formData.district} className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-400 outline-none disabled:opacity-50">
                          <option value="">Select City</option>
                          {formData.district && LOCATIONS[formData.province][formData.district].map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Remarks</label>
-                    <textarea name="remarks" value={formData.remarks} onChange={handleInputChange} className="input-field" style={{ height: '5rem', resize: 'none' }} placeholder="Any additional notes..." />
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Remarks</label>
+                    <textarea name="remarks" value={formData.remarks} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-cyan-400 focus:outline-none h-20 resize-none" placeholder="Any additional notes..." />
                 </div>
 
                 <button 
                     onClick={handleSaveEntry}
-                    className="btn-primary"
-                    style={{ width: '100%', marginTop: '1rem' }}
+                    className="w-full mt-2 py-3 bg-cyan-400 hover:bg-[#00c2cc] text-black font-bold rounded-xl shadow-neon transition-all hover:-translate-y-1 flex items-center justify-center gap-2"
                 >
                     <Save size={20} /> SAVE & UPDATE
                 </button>
@@ -324,23 +323,22 @@ export const DataEntries: React.FC = () => {
       </div>
 
       {/* RIGHT: Data Table & Actions */}
-      <div className="data-table-container">
+      <div className="flex-[2] flex flex-col gap-6">
           
           {/* Actions Bar */}
-          <div className="card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', position: 'sticky', top: '6rem', zIndex: 20 }}>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-                  <div className="relative" style={{ width: '100%', maxWidth: '16rem' }}>
+          <div className="glass-card p-4 flex flex-col gap-4 sticky top-24 z-20">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="relative w-full max-w-xs">
                       <input 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Search..."
-                        className="input-field"
-                        style={{ paddingLeft: '2.5rem' }}
+                        className="w-full bg-slate-950 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-cyan-400 focus:outline-none"
                       />
-                      <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '0.9rem', color: '#64748b' }} />
+                      <Search size={16} className="absolute left-3 top-2.5 text-slate-500" />
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <div className="flex items-center gap-3">
                       <input 
                         type="file" 
                         accept=".xlsx, .xls" 
@@ -350,7 +348,7 @@ export const DataEntries: React.FC = () => {
                       />
                       <button 
                         onClick={() => fileInputRef.current?.click()}
-                        style={{ padding: '0.75rem 1rem', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#cbd5e1', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.875rem' }}
+                        className="px-4 py-2 border border-white/10 text-slate-300 rounded-lg hover:bg-white/5 hover:text-white flex items-center gap-2 text-sm font-bold transition-colors"
                         title="Import existing Excel sheet"
                       >
                          <Upload size={16} /> Import
@@ -358,7 +356,7 @@ export const DataEntries: React.FC = () => {
 
                       <button 
                         onClick={exportAllSheets}
-                        style={{ padding: '0.75rem 1rem', background: 'var(--color-green)', color: 'white', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.875rem' }}
+                        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg transition-transform hover:-translate-y-0.5"
                       >
                          <FileSpreadsheet size={16} /> Export Sheets
                       </button>
@@ -366,42 +364,45 @@ export const DataEntries: React.FC = () => {
               </div>
               
               {importStatus && (
-                  <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', color: 'var(--color-green)', padding: '0.75rem', borderRadius: '0.75rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg text-sm flex items-center gap-2">
                       <AlertCircle size={16} /> {importStatus}
                   </div>
               )}
           </div>
 
           {/* Table */}
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-             <div style={{ overflowX: 'auto' }}>
-                 <table className="data-table">
-                     <thead style={{ background: 'var(--color-slate-900)' }}>
+          <div className="glass-card overflow-hidden rounded-2xl border border-white/10">
+             <div className="overflow-x-auto">
+                 <table className="w-full text-left border-collapse">
+                     <thead className="bg-slate-900 text-xs uppercase text-slate-400 font-bold border-b border-white/10">
                          <tr>
-                             <th>Sr No</th>
-                             <th>Date</th>
-                             <th>Name</th>
-                             <th>Trade</th>
-                             <th>Contact</th>
-                             <th>Location</th>
-                             <th style={{ textAlign: 'right' }}>Action</th>
+                             <th className="p-4">Sr No</th>
+                             <th className="p-4">Date</th>
+                             <th className="p-4">Name</th>
+                             <th className="p-4">Trade</th>
+                             <th className="p-4">Contact</th>
+                             <th className="p-4">Location</th>
+                             <th className="p-4 text-right">Action</th>
                          </tr>
                      </thead>
-                     <tbody>
+                     <tbody className="divide-y divide-white/5 text-sm">
                          {filteredEntries.map((entry, index) => (
-                             <tr key={entry.id}>
-                                 <td style={{ color: 'var(--color-text-muted)' }}>{entries.length - index}</td>
-                                 <td style={{ fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{entry.date}</td>
-                                 <td style={{ color: 'white', fontWeight: 700 }}>{entry.name} <span style={{ display: 'block', fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>{entry.fatherName}</span></td>
-                                 <td>
-                                     <span style={{ padding: '0.25rem 0.5rem', background: 'rgba(0,243,255,0.1)', color: 'var(--color-cyan)', borderRadius: '0.25rem', border: '1px solid rgba(0,243,255,0.3)', fontSize: '0.75rem', fontWeight: 700 }}>
+                             <tr key={entry.id} className="hover:bg-white/5 transition-colors">
+                                 <td className="p-4 text-slate-500">{entries.length - index}</td>
+                                 <td className="p-4 font-mono text-slate-400">{entry.date}</td>
+                                 <td className="p-4">
+                                     <div className="font-bold text-white">{entry.name}</div>
+                                     <div className="text-xs text-slate-500">{entry.fatherName}</div>
+                                 </td>
+                                 <td className="p-4">
+                                     <span className="px-2 py-1 bg-cyan-400/10 text-cyan-400 rounded border border-cyan-400/30 text-xs font-bold">
                                          {entry.trade}
                                      </span>
                                  </td>
-                                 <td>{entry.phone1}</td>
-                                 <td style={{ fontSize: '0.75rem' }}>{entry.city}, {entry.province}</td>
-                                 <td style={{ textAlign: 'right' }}>
-                                     <button onClick={() => handleDelete(entry.id)} style={{ color: 'var(--color-red)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.5rem' }}>
+                                 <td className="p-4 text-slate-300">{entry.phone1}</td>
+                                 <td className="p-4 text-slate-400 text-xs">{entry.city}, {entry.province}</td>
+                                 <td className="p-4 text-right">
+                                     <button onClick={() => handleDelete(entry.id)} className="text-red-400 hover:text-red-300 hover:bg-red-400/10 p-2 rounded-lg transition-colors">
                                          <Trash2 size={16} />
                                      </button>
                                  </td>
@@ -409,7 +410,7 @@ export const DataEntries: React.FC = () => {
                          ))}
                          {filteredEntries.length === 0 && (
                              <tr>
-                                 <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                                 <td colSpan={7} className="p-12 text-center text-slate-500 italic">
                                      No entries found.
                                  </td>
                              </tr>
@@ -419,7 +420,7 @@ export const DataEntries: React.FC = () => {
              </div>
           </div>
 
-          <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '1rem' }}>
+          <div className="text-center text-xs text-slate-500 mt-4">
               Total Records: {entries.length} | Database stored locally in your browser.
           </div>
       </div>
