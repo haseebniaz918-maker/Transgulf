@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { 
   Merge, Split, Shrink, Image, FileText, FileOutput, FileInput, 
-  Wand2, X, Upload, Plus, Trash2, Zap
+  X, Upload, Plus, Trash2, Zap, PenTool, Check
 } from 'lucide-react';
 import { mergePdfs, imagesToPdf, downloadBlob } from '../services/pdfUtils';
 import { ToolDef } from '../types';
+import { PdfEditor } from './PdfEditor';
 
 export const PdfTools: React.FC = () => {
   const [activeTool, setActiveTool] = useState<ToolDef | null>(null);
@@ -12,25 +13,23 @@ export const PdfTools: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [resultMessage, setResultMessage] = useState<string>('');
-  const [aiPrompt, setAiPrompt] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const tools: ToolDef[] = [
-    { id: 'merge', title: 'Merge PDF', description: 'Combine multiple PDFs into one.', icon: Merge, color: '#00f3ff', neonClass: '', action: () => {} },
-    { id: 'split', title: 'Split PDF', description: 'Split PDF pages into a ZIP file.', icon: Split, color: '#00f3ff', neonClass: '', action: () => {} },
-    { id: 'compress', title: 'Compress PDF', description: 'Optimize PDF size by quality reduction.', icon: Shrink, color: '#00f3ff', neonClass: '', action: () => {} },
-    { id: 'pdf-to-img', title: 'PDF to Photo', description: 'Convert PDF pages to Photos (JPG, PNG).', icon: Image, color: '#00f3ff', neonClass: '', action: () => {} },
-    { id: 'img-to-pdf', title: 'Photo to PDF', description: 'Convert Photos (JPG, PNG) to PDF.', icon: FileInput, color: '#00f3ff', neonClass: '', action: () => {} },
-    { id: 'pdf-to-word', title: 'PDF to MS Word', description: 'AI-Enhanced conversion to editable DOCX.', icon: FileText, color: '#00f3ff', neonClass: '', action: () => {} },
-    { id: 'word-to-pdf', title: 'MS Word to PDF', description: 'Convert DOCX files to PDF format.', icon: FileOutput, color: '#00f3ff', neonClass: '', action: () => {} },
-    { id: 'ai-assist', title: 'AI Assistant', description: 'Chat with your PDF content.', icon: Wand2, color: '#00f3ff', neonClass: '', action: () => {} },
+    { id: 'merge', title: 'Merge PDF', description: 'Combine multiple PDFs into one.', icon: Merge, color: '#00f3ff', neonClass: 'shadow-neon', action: () => {} },
+    { id: 'split', title: 'Split PDF', description: 'Split PDF pages into a ZIP file.', icon: Split, color: '#00f3ff', neonClass: 'shadow-neon', action: () => {} },
+    { id: 'compress', title: 'Compress PDF', description: 'Optimize PDF size by quality reduction.', icon: Shrink, color: '#00f3ff', neonClass: 'shadow-neon', action: () => {} },
+    { id: 'pdf-to-img', title: 'PDF to Photo', description: 'Convert PDF pages to Photos (JPG, PNG).', icon: Image, color: '#00f3ff', neonClass: 'shadow-neon', action: () => {} },
+    { id: 'img-to-pdf', title: 'Photo to PDF', description: 'Convert Photos (JPG, PNG) to PDF.', icon: FileInput, color: '#00f3ff', neonClass: 'shadow-neon', action: () => {} },
+    { id: 'pdf-to-word', title: 'PDF to MS Word', description: 'AI-Enhanced conversion to editable DOCX.', icon: FileText, color: '#00f3ff', neonClass: 'shadow-neon', action: () => {} },
+    { id: 'word-to-pdf', title: 'MS Word to PDF', description: 'Convert DOCX files to PDF format.', icon: FileOutput, color: '#00f3ff', neonClass: 'shadow-neon', action: () => {} },
+    { id: 'pdf-editor', title: 'PDF Editor', description: 'Edit text, sign, and insert images.', icon: PenTool, color: '#00f3ff', neonClass: 'shadow-neon', action: () => {} },
   ];
 
   const handleToolClick = (tool: ToolDef) => {
     setActiveTool(tool);
     setFiles([]);
     setResultMessage('');
-    setAiPrompt('');
     setProgress(0);
   };
 
@@ -85,6 +84,11 @@ export const PdfTools: React.FC = () => {
     }
   };
 
+  // If Editor is active and file selected, render editor full screen
+  if (activeTool?.id === 'pdf-editor' && files.length > 0) {
+      return <PdfEditor file={files[0]} onClose={() => { setActiveTool(null); setFiles([]); }} />;
+  }
+
   return (
     <div className="pb-20 animate-fade-in">
       <div className="text-center mb-16">
@@ -94,56 +98,93 @@ export const PdfTools: React.FC = () => {
         <p className="text-slate-400 text-lg">Powered by WebAssembly & Pro AI Models</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {tools.map((tool) => (
-          <div 
-            key={tool.id} 
-            onClick={() => handleToolClick(tool)} 
-            className="bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:border-cyan-400 hover:shadow-neon group flex flex-col gap-4"
-          >
-            <div className="w-14 h-14 rounded-xl bg-slate-950 border border-cyan-400/20 flex items-center justify-center transition-all duration-300 group-hover:bg-cyan-400 group-hover:border-cyan-400">
-              <tool.icon className="w-8 h-8 text-cyan-400 group-hover:text-black transition-colors" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
+        {tools.map((tool) => {
+          const isActive = activeTool?.id === tool.id;
+          return (
+            <div 
+              key={tool.id} 
+              onClick={() => handleToolClick(tool)} 
+              className={`
+                relative bg-slate-900/60 backdrop-blur-md border rounded-2xl p-6 cursor-pointer flex flex-col gap-4 overflow-hidden group
+                transition-all duration-300 ease-out transform
+                ${isActive 
+                  ? 'border-cyan-400 shadow-[0_0_30px_rgba(0,243,255,0.4)] scale-105 ring-1 ring-cyan-400' 
+                  : 'border-white/10 hover:scale-105 hover:border-cyan-400/80 hover:shadow-[0_0_20px_rgba(0,243,255,0.2)]'
+                }
+              `}
+            >
+              <div className={`
+                w-14 h-14 rounded-xl border flex items-center justify-center transition-all duration-300 relative z-10
+                ${isActive 
+                  ? 'bg-cyan-400 border-cyan-400 shadow-[0_0_20px_rgba(0,243,255,0.6)] text-black' 
+                  : 'bg-slate-950 border-cyan-400/30 text-cyan-400 group-hover:border-cyan-400 group-hover:shadow-[0_0_15px_rgba(0,243,255,0.4)] group-hover:text-cyan-300'
+                }
+              `}>
+                <tool.icon className={`w-8 h-8 transition-colors duration-300 ${isActive ? 'text-black' : 'text-cyan-400 group-hover:text-cyan-300'}`} />
+              </div>
+              
+              <div className="relative z-10">
+                <h3 className={`text-xl font-bold mb-1 transition-colors duration-300 ${isActive ? 'text-cyan-400' : 'text-white group-hover:text-cyan-300'}`}>
+                  {tool.title}
+                </h3>
+                <p className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">{tool.description}</p>
+              </div>
+
+              {/* Background Glow for Hover */}
+              <div className={`absolute -right-10 -bottom-10 w-40 h-40 bg-cyan-400/10 rounded-full blur-3xl transition-opacity duration-500 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}></div>
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-white mb-1 group-hover:text-cyan-400 transition-colors">{tool.title}</h3>
-              <p className="text-sm text-slate-400">{tool.description}</p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {activeTool && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-2xl bg-slate-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-fade-in">
+          <div 
+            className="w-full max-w-3xl bg-slate-900 border border-cyan-400/30 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.6)] flex flex-col max-h-[90vh] animate-slide-up transform transition-all duration-500"
+            style={{ animationDuration: '0.4s' }}
+          >
             {/* Header */}
-            <div className="p-6 border-b border-white/10 flex justify-between items-center bg-cyan-400/5">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center bg-gradient-to-r from-slate-900 to-cyan-950/30">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-cyan-400 rounded-xl shadow-neon">
+                <div className="p-3 bg-cyan-400 rounded-xl shadow-[0_0_15px_rgba(0,243,255,0.5)]">
                    <activeTool.icon size={24} className="text-black" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-white font-display">{activeTool.title}</h3>
-                  <p className="text-xs text-cyan-400 font-bold tracking-widest uppercase">Active Workspace</p>
+                  <h3 className="text-2xl font-bold text-white font-display tracking-tight">{activeTool.title}</h3>
+                  <p className="text-xs text-cyan-400 font-bold tracking-[0.2em] uppercase flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                    Active Workspace
+                  </p>
                 </div>
               </div>
-              <button onClick={() => setActiveTool(null)} className="text-slate-400 hover:text-white transition-colors">
-                <X size={24} />
+              <button 
+                onClick={() => setActiveTool(null)} 
+                className="w-10 h-10 rounded-full bg-white/5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 flex items-center justify-center transition-all duration-300 hover:rotate-90 hover:shadow-[0_0_10px_rgba(255,0,0,0.2)]"
+              >
+                <X size={20} />
               </button>
             </div>
             
-            {/* Content */}
-            <div className="p-8 overflow-y-auto">
+            {/* Content Area */}
+            <div className="p-8 overflow-y-auto custom-scrollbar bg-gradient-to-b from-slate-900 to-slate-950">
               {files.length === 0 ? (
                 <div 
-                  className="border-2 border-dashed border-white/10 rounded-3xl p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:border-cyan-400 hover:bg-cyan-400/5 transition-all group"
+                  className="group relative border-2 border-dashed border-white/10 hover:border-cyan-400/50 rounded-3xl p-16 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-500 hover:bg-cyan-400/5 overflow-hidden"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-6 border border-white/5 group-hover:scale-110 transition-transform">
-                    <Upload size={32} className="text-cyan-400" />
+                  {/* Pulse Effect Background */}
+                  <div className="absolute inset-0 bg-cyan-400/5 opacity-0 group-hover:opacity-100 animate-pulse transition-opacity duration-500"></div>
+
+                  <div className="w-24 h-24 rounded-full bg-slate-800 border border-white/5 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:border-cyan-400 group-hover:shadow-[0_0_30px_rgba(0,243,255,0.4)] transition-all duration-500 relative z-10">
+                    <Upload size={40} className="text-slate-400 group-hover:text-cyan-400 transition-colors duration-300" />
                   </div>
-                  <h4 className="text-xl font-bold text-white mb-2">Upload Files</h4>
-                  <p className="text-slate-400 text-sm">Drag & drop or click to browse</p>
+                  <h4 className="text-2xl font-bold text-white mb-2 relative z-10 group-hover:text-cyan-400 transition-colors duration-300">
+                    Upload Files
+                  </h4>
+                  <p className="text-slate-400 text-sm relative z-10 max-w-xs leading-relaxed">
+                    Drag & drop your files here or click to browse. Supported formats: PDF, JPG, PNG, DOCX.
+                  </p>
                   <input 
                     type="file" 
                     ref={fileInputRef}
@@ -154,54 +195,78 @@ export const PdfTools: React.FC = () => {
                   />
                 </div>
               ) : (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-4 animate-fade-in">
+                  {/* File List */}
                   {files.map((f, i) => (
-                    <div key={i} className="flex justify-between items-center p-4 bg-slate-950/50 border border-white/10 rounded-xl">
+                    <div key={i} className="flex justify-between items-center p-4 bg-slate-800/50 border border-white/5 rounded-xl hover:border-cyan-400/30 hover:bg-slate-800 transition-all duration-300 group">
                       <div className="flex items-center gap-4">
-                        <FileText size={20} className="text-cyan-400" />
-                        <div className="text-sm font-mono text-white">
-                          {f.name} <span className="text-slate-500">({(f.size/1024/1024).toFixed(2)} MB)</span>
+                        <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center border border-white/5 group-hover:border-cyan-400/30 transition-colors">
+                            <FileText size={20} className="text-cyan-400" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-sm font-bold text-white group-hover:text-cyan-100 transition-colors">{f.name}</span>
+                            <span className="text-xs text-slate-500 font-mono">{(f.size/1024/1024).toFixed(2)} MB</span>
                         </div>
                       </div>
-                      <button onClick={() => removeFile(i)} className="text-red-400 hover:text-red-300">
+                      <button 
+                        onClick={() => removeFile(i)} 
+                        className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 duration-300"
+                      >
                         <Trash2 size={18} />
                       </button>
                     </div>
                   ))}
                   
                   {['merge', 'pdf-to-img', 'img-to-pdf'].includes(activeTool.id) && (
-                     <button onClick={() => fileInputRef.current?.click()} className="w-full py-3 border border-white/10 rounded-xl text-slate-300 hover:bg-white/5 hover:border-cyan-400 flex items-center justify-center gap-2 transition-all">
-                       <Plus size={16} /> Add More Files
+                     <button 
+                        onClick={() => fileInputRef.current?.click()} 
+                        className="w-full py-3 border-2 border-dashed border-white/10 rounded-xl text-slate-400 hover:text-cyan-400 hover:border-cyan-400/50 hover:bg-cyan-400/5 flex items-center justify-center gap-2 transition-all duration-300"
+                     >
+                       <Plus size={18} /> Add More Files
                      </button>
                   )}
 
-                  {activeTool.id === 'ai-assist' && (
-                    <textarea 
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      placeholder="Ask AI about this document..."
-                      className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-4 text-white focus:border-cyan-400 focus:outline-none min-h-[8rem] resize-none"
-                    />
-                  )}
-
                   {isProcessing && (
-                    <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden mt-4">
-                       <div className="h-full bg-cyan-400 transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                    <div className="w-full mt-6">
+                       <div className="flex justify-between text-xs text-cyan-400 font-bold uppercase tracking-wider mb-2">
+                          <span>Processing...</span>
+                          <span>{progress}%</span>
+                       </div>
+                       <div className="h-2 bg-slate-800 rounded-full overflow-hidden border border-white/5 relative">
+                          <div 
+                            className="h-full bg-gradient-to-r from-cyan-600 via-cyan-400 to-cyan-300 transition-all duration-300 relative shadow-[0_0_20px_#00f3ff]"
+                            style={{ width: `${progress}%` }}
+                          >
+                             <div className="absolute inset-0 bg-white/30 animate-[pulse_1s_infinite]"></div>
+                             <div className="absolute top-0 right-0 bottom-0 w-2 bg-white/50 blur-[2px]"></div>
+                          </div>
+                       </div>
                     </div>
                   )}
 
+                  {/* Result Message */}
                   {resultMessage && (
-                     <div className="p-4 bg-cyan-400/10 border border-cyan-400/50 rounded-xl text-cyan-400 text-sm flex items-center gap-2">
-                        <Zap size={16} /> {resultMessage}
+                     <div className="p-4 bg-cyan-400/10 border border-cyan-400/40 rounded-xl text-cyan-400 text-sm font-bold flex items-center gap-3 animate-pop-in shadow-[0_0_20px_rgba(0,243,255,0.1)]">
+                        <div className="p-1 bg-cyan-400 rounded-full text-black"><Check size={12} strokeWidth={4} /></div>
+                        {resultMessage}
                      </div>
                   )}
 
+                  {/* Action Button */}
                   <button 
                     onClick={() => processFiles()}
                     disabled={isProcessing}
-                    className="w-full mt-4 py-4 bg-cyan-400 hover:bg-[#00c2cc] text-black font-bold rounded-xl shadow-neon transition-all hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className={`
+                        w-full mt-4 py-4 bg-cyan-400 text-black font-bold rounded-xl text-lg tracking-wide
+                        shadow-[0_0_20px_rgba(0,243,255,0.4)] hover:shadow-[0_0_40px_rgba(0,243,255,0.6)] 
+                        hover:bg-[#00e0ee] hover:-translate-y-1 active:scale-[0.98] active:translate-y-0
+                        disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none
+                        transition-all duration-300 flex items-center justify-center gap-3
+                        group
+                    `}
                   >
-                    {isProcessing ? 'PROCESSING...' : 'START PROCESSING'} <Zap size={20} className="fill-black" />
+                    {isProcessing ? 'PROCESSING...' : activeTool.id === 'pdf-editor' ? 'OPEN EDITOR' : 'START PROCESSING'} 
+                    <Zap size={22} className={`fill-black transition-transform duration-300 ${!isProcessing && 'group-hover:scale-110 group-hover:rotate-12'}`} />
                   </button>
                 </div>
               )}

@@ -101,44 +101,64 @@ export const IdentityLab: React.FC = () => {
           <div className="flex flex-col items-center gap-12 w-full animate-pop-in">
              <div className="flex flex-wrap justify-center gap-8 md:gap-16 w-full items-center">
                 
-                {/* Original */}
+                {/* Original with Magic Animation */}
                 <div className="relative w-72 aspect-[3/4] rounded-2xl overflow-hidden border border-white/10 group">
-                    <img src={URL.createObjectURL(originalImage)} className={`w-full h-full object-cover transition-all duration-700 ${isProcessing ? 'grayscale opacity-50' : ''}`} />
-                    <div className="absolute top-4 left-4 bg-black/60 px-3 py-1 rounded-lg text-xs font-bold text-white">ORIGINAL</div>
+                    <img src={URL.createObjectURL(originalImage)} className={`w-full h-full object-cover transition-all duration-1000 ${isProcessing ? 'filter grayscale brightness-50 blur-sm' : ''}`} />
+                    <div className="absolute top-4 left-4 bg-black/60 px-3 py-1 rounded-lg text-xs font-bold text-white z-10">ORIGINAL</div>
+                    
+                    {/* MAGIC TRANSITION LAYER */}
                     {isProcessing && (
-                        <div className="absolute top-0 left-0 w-full h-1 bg-pink-500 shadow-[0_0_15px_#ff00ff] animate-slide-up"></div>
+                        <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
+                            {/* Scanning Beam */}
+                            <div className="absolute left-0 right-0 h-4 bg-pink-500/80 shadow-[0_0_50px_#ff00ff] animate-magic-scan mix-blend-screen"></div>
+                            
+                            {/* Particles */}
+                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+                            
+                            {/* Magical Glow Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-tr from-pink-500/0 via-pink-500/20 to-cyan-500/0 animate-pulse"></div>
+                            
+                            {/* Center Loader */}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="relative">
+                                    <Sparkles className="text-white w-20 h-20 animate-spin-slow drop-shadow-[0_0_20px_#ff00ff]" />
+                                    <div className="absolute inset-0 animate-ping rounded-full bg-pink-500/30"></div>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
 
                 <div className="hidden md:flex text-pink-400">
-                    <ArrowRight size={32} />
+                    {isProcessing ? <RefreshCw size={32} className="animate-spin" /> : <ArrowRight size={32} />}
                 </div>
 
                 {/* Result */}
-                <div className="relative w-72 aspect-[3/4] rounded-2xl overflow-hidden border-2 border-pink-500 shadow-neon-pink">
+                <div className="relative w-72 aspect-[3/4] rounded-2xl overflow-hidden border-2 border-pink-500 shadow-neon-pink bg-slate-900 transition-all duration-1000">
                     {isProcessing ? (
-                        <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-pink-400 gap-4">
-                            <div className="w-12 h-12 border-4 border-pink-500/30 border-t-pink-500 rounded-full animate-spin"></div>
-                            <span className="text-sm font-bold tracking-widest animate-pulse">ENHANCING...</span>
+                        <div className="w-full h-full flex flex-col items-center justify-center text-pink-400 gap-4 bg-black">
+                             <div className="w-full h-full absolute inset-0 bg-gradient-to-b from-transparent via-pink-900/20 to-transparent animate-pulse"></div>
+                            <div className="text-sm font-bold tracking-widest animate-pulse z-10">APPLYING MAGIC...</div>
                         </div>
                     ) : (
-                        <>
-                            <img src={`data:image/png;base64,${generatedImageBase64}`} className="w-full h-full object-cover" />
-                            <div className="absolute top-4 left-4 bg-pink-500/90 px-3 py-1 rounded-lg text-xs font-bold text-white flex items-center gap-1">
+                        <div className="relative w-full h-full group">
+                            <img src={`data:image/png;base64,${generatedImageBase64}`} className="w-full h-full object-cover animate-fade-in" />
+                            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                            <div className="absolute top-4 left-4 bg-pink-500/90 px-3 py-1 rounded-lg text-xs font-bold text-white flex items-center gap-1 shadow-lg">
                                 <Sparkles size={12} className="fill-white" /> ENHANCED
                             </div>
-                        </>
+                        </div>
                     )}
                 </div>
              </div>
 
              {!isProcessing && (
-                 <div className="flex gap-4">
+                 <div className="flex gap-4 animate-slide-up">
                      <button onClick={() => { setGeneratedImageBase64(null); setOriginalImage(null); }} className="px-6 py-3 border border-white/10 rounded-xl text-white hover:bg-white/5 flex items-center gap-2 font-bold transition-all">
                         <RefreshCw size={20} /> New Scan
                      </button>
                      <button onClick={handleDownload} className="px-8 py-3 bg-pink-500 hover:bg-pink-400 text-black rounded-xl font-bold shadow-neon-pink transition-all flex items-center gap-2">
-                        <Download size={20} /> Download
+                        <Download size={20} /> Download Result
                      </button>
                  </div>
              )}

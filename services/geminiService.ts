@@ -74,7 +74,7 @@ export const validateFieldWithAI = async (value: string, type: 'CNIC' | 'PASSPOR
       - **CNIC**: Must be 13 digits. Standard format: 12345-1234567-1. If hyphens missing, suggest them.
       - **PASSPORT**: Pakistani Passports typically start with 1-2 alphabets followed by 7 digits (e.g., AB1234567).
       - **DOB**: Must be a plausible date of birth (user must be between 18 and 100 years old).
-      - **DATE_ISSUE**: Must be in the past, but not more than 10 years ago (standard validity).
+      - **DATE_ISSUE**: Must be in the past, but not more than 10 years ago.
       - **DATE_EXPIRY**: Must be in the future (usually 5 or 10 years from issue).
       
       **Return JSON ONLY**:
@@ -98,9 +98,43 @@ export const validateFieldWithAI = async (value: string, type: 'CNIC' | 'PASSPOR
   }
 };
 
-// Deprecated alias for backward compatibility
-export const validateIdentityFormat = async (value: string, type: 'CNIC' | 'PASSPORT') => {
-    return validateFieldWithAI(value, type);
+export const validateProfileData = async (nationality: string, phone: string, email: string): Promise<{
+    phoneValid: boolean;
+    phoneMessage: string;
+    emailValid: boolean;
+    emailMessage: string;
+}> => {
+    try {
+        const ai = getClient();
+        const prompt = `
+        Validate the consistency of this user profile data:
+        Nationality: "${nationality}"
+        Phone Number: "${phone}"
+        Email: "${email}"
+
+        Rules:
+        1. Check if the Phone Number format matches the country standard for the given Nationality.
+        2. Check if the Email address appears valid (syntax check).
+
+        Return JSON ONLY:
+        {
+            "phoneValid": boolean,
+            "phoneMessage": "Explanation if invalid, otherwise 'Valid'",
+            "emailValid": boolean,
+            "emailMessage": "Explanation if invalid, otherwise 'Valid'"
+        }
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: { responseMimeType: 'application/json' }
+        });
+        
+        return JSON.parse(response.text || "{}");
+    } catch (e) {
+        return { phoneValid: true, phoneMessage: "", emailValid: true, emailMessage: "" };
+    }
 };
 
 export const generateImageDescription = async (base64Image: string, mimeType: string): Promise<string> => {
@@ -125,7 +159,7 @@ export const generateImageDescription = async (base64Image: string, mimeType: st
 export const generateIdentityPhoto = async (base64Image: string, mimeType: string): Promise<string> => {
   try {
     const ai = getClient();
-    // Using gemini-2.5-flash-image instead of 3-pro to avoid 403 Permission Denied
+    // Using gemini-2.5-flash-image
     const model = 'gemini-2.5-flash-image';
     
     const prompt = `
@@ -170,29 +204,30 @@ export const generateIdentityPhoto = async (base64Image: string, mimeType: strin
   }
 };
 
-export const generateEnhancedDocument = async (base64Image: string, mimeType: string): Promise<string[]> => {
+export const generateEnhancedDocument = async (base64Image: string, mimeType: string, instruction: string = ""): Promise<string[]> => {
   try {
     const ai = getClient();
-    // Using gemini-2.5-flash-image instead of 3-pro to avoid 403 Permission Denied
     const model = 'gemini-2.5-flash-image';
     
     const prompt = `
-    You are an advanced Computer Vision AI specializing in Document Extraction.
+    You are an advanced Computer Vision AI specializing in Intelligent Document Scanning.
     
-    **CRITICAL TASK**: Detect and Extract the *Identity Document* (Passport, CNIC, ID Card) from the image.
+    **TASK**: Isolate, Crop, and Enhance the specific document from the image.
+    **USER FOCUS INSTRUCTION**: "${instruction || 'Main Identity Document'}"
     
-    **STRICT RULES FOR BACKGROUNDS**:
-    - **Passport on White Paper**: If a passport is placed on a piece of white paper, the white paper is **BACKGROUND TRASH**. You must CROP ONLY the Passport Booklet. Ignore the white paper completely.
-    - **Table/Bed Surfaces**: Remove all surrounding surfaces.
-    
-    **ACTION PLAN**:
-    1. **DETECT**: Find the boundaries of the specific ID document (Green/Blue Passport Booklet or Plastic ID Card).
-    2. **CROP**: Crop tightly to the edges of that document. Do NOT leave any margin or surrounding paper.
-    3. **WARP**: Correct perspective to a flat, top-down view (0-degree scan angle).
-    4. **NO MARGINS**: The output image must be the document itself, edge-to-edge.
+    **EXECUTION STEPS**:
+    1. **DETECT**: Locate the document specified by the user. If generic, find the main ID card, Passport, or Paper.
+    2. **CROP & CLEAN**: 
+       - Remove ALL background surfaces (tables, beds, hands).
+       - The output must ONLY contain the document.
+       - **MARGINS**: Add a clean white padding of approximately 2cm equivalent around the document.
+    3. **ENHANCE**: 
+       - Fix perspective (dewarp to flat 90-degree view).
+       - Enhance text contrast for readability.
+       - Ensure lighting is even.
     
     **OUTPUT**:
-    - Return isolated image(s) of the documents found.
+    - Return the processed image.
     `;
 
     const response = await ai.models.generateContent({
@@ -216,7 +251,6 @@ export const generateEnhancedDocument = async (base64Image: string, mimeType: st
     }
 
     if (images.length === 0) {
-        // Fallback for when no image part is returned but maybe the logic is confusing
         throw new Error("No document generated.");
     }
 
@@ -257,51 +291,6 @@ export const convertPdfToWordHtml = async (base64Pdf: string): Promise<string> =
     }
 };
 
-export const enhanceHtmlForPdf = async (rawHtml: string): Promise<string> => {
-    try {
-        const ai = getClient();
-        const model = 'gemini-2.5-flash';
-        
-        const imgMap = new Map<string, string>();
-        let imgCounter = 0;
-        
-        const htmlWithPlaceholders = rawHtml.replace(/<img\s+[^>]*src=["']data:image\/[^;]+;base64,[^"']+["'][^>]*>/gi, (match) => {
-             const placeholder = `___IMG_${imgCounter++}___`; 
-             imgMap.set(placeholder, match);
-             return `<div id="${placeholder}">${placeholder}</div>`; 
-        });
-
-        const prompt = `
-        You are a Professional Document Formatter. 
-        Style the provided HTML for a high-quality PDF export (Fonts, Margins, Table Borders).
-        Preserve the image placeholders like <div id="___IMG_0___">...</div>.
-        Raw HTML Input:
-        ${htmlWithPlaceholders.substring(0, 45000)} 
-        `;
-        
-        const response = await ai.models.generateContent({
-            model,
-            contents: prompt
-        });
-        
-        let text = response.text || "";
-        text = text.replace(/```html/g, '').replace(/```/g, '');
-
-        imgMap.forEach((originalTag, token) => {
-            const divRegex = new RegExp(`<div[^>]*id="${token}"[^>]*>.*?</div>`, 's');
-            if (divRegex.test(text)) {
-                 text = text.replace(divRegex, originalTag);
-            } else {
-                 text = text.split(token).join(originalTag);
-            }
-        });
-
-        return text;
-    } catch (e) {
-        return rawHtml; 
-    }
-};
-
 export const generateCvHtml = async (cvData: any, userInstruction: string = ""): Promise<string> => {
   const ai = getClient();
   
@@ -315,41 +304,38 @@ export const generateCvHtml = async (cvData: any, userInstruction: string = ""):
   };
 
   const prompt = `
-  You are an elite AI CV Architect & Renderer with a master-level understanding of CSS Grid, Typography, and Color Theory.
+  You are an elite AI CV Architect & Renderer.
 
   **CORE OBJECTIVE**: 
-  Transform the provided User Data (JSON) into a visually flawless, high-contrast, professional HTML5 CV for a PDF export.
+  Transform User Data into a flawless, High-Contrast HTML5 CV for PDF export.
   
-  **DESIGN SEED**: ${layoutId} (Use this to deterministically select a UNIQUE layout structure).
-  **TARGET ROLE**: ${jobRole}
+  **VISUAL & CONTRAST RULES (CRITICAL)**:
+  1. **Backgrounds vs Text**: 
+     - If a background is DARK (e.g., #1e293b, #000, #003366), text MUST be WHITE (#FFF).
+     - If a background is LIGHT (e.g., #FFF, #f0f0f0), text MUST be DARK (#000, #333).
+     - **NEVER** place gray text on a dark background or dark text on a dark background.
+  2. **Structure**: Use HTML TABLES (\`<table>\`) or FLEXBOX (\`display: flex\`) for layout solidity. Avoid complex CSS Grids that break in PDF converters.
+  3. **Margins**: Ensure standard A4 margins (padding: 10mm).
+  
+  **DESIGN TEMPLATE**:
+  Based on Seed ID: **${layoutId}**, fetch and replicate a MODERN, PROFESSIONAL CV style (e.g., Harvard, Minimalist, Tech, Creative).
+  - Vary the layout significantly based on the seed.
+  - *Sidebar Layout* vs *Single Column* vs *Header Heavy*.
+  - Use high-quality typography (Inter, Roboto, Lato).
+
   **USER REQUEST**: "${userInstruction}"
 
-  **CRITICAL CONTRAST & READABILITY RULES (AI MUST VALIDATE)**:
-  1. **Background/Text Contrast**: 
-     - IF background is DARK (e.g., #1a202c, #003366), text MUST be WHITE (#ffffff).
-     - IF background is LIGHT (e.g., #ffffff, #f7fafc), text MUST be DARK (#1a202c).
-     - **NEVER** place gray text on a colored background.
-  2. **Section Distinctiveness**: Use clear headers with distinct colors or background bands to separate Contact, Education, and Experience.
-  3. **No Overflow**: Ensure the layout fits comfortably on an A4 page. Adjust font sizes (10pt-12pt for body) automatically to fit content.
-
-  **TEMPLATE ENGINE LOGIC (MASTER LAYOUTS)**:
-  Based on the Seed, choose one of these styles but ensure it's **COMPLETE**:
-  - **Modern Split**: 1/3 Left Sidebar (Dark background, White Text) for Contact/Skills, 2/3 Right (White background, Dark Text) for Experience.
-  - **Classic Header**: Top full-width header (accent color), body content in clean single or double columns.
-  - **Minimalist Grid**: Clean whitespace, subtle borders, elegant serif fonts for headings.
-  - **Executive**: Dark Navy or Charcoal accents, highly structured, very formal.
-
-  **CONTENT RULES**:
-  - **Render EVERY item** in Experience/Education. Do not summarize or skip.
-  - If details are empty, generate 3 professional bullet points relevant to the role.
-  - **Photo**: Render the photo as a circle or rounded square with a border.
-
+  **CONTENT AUTO-GENERATION**:
+  1. **CAREER OBJECTIVE**: Auto-write tailored to "${jobRole}".
+  2. **RESPONSIBILITIES**: Auto-fill bullet points for Experience if empty.
+  3. **SKILLS**: Auto-fill if empty.
+  
   **TECHNICAL OUTPUT**:
-  - Return **ONLY** raw HTML string.
-  - Embed CSS in \`<style>\` tags.
-  - Use \`@page { size: A4; margin: 0; }\` in CSS.
+  - Return **ONLY** raw HTML string with embedded CSS.
+  - Use \`@page { size: A4; margin: 0; }\`
   - Body width must be 210mm. Min-height 297mm.
-  - Image Src: Use \`[[PHOTO_PLACEHOLDER]]\` for the user photo.
+  - Image Src: \`[[PHOTO_PLACEHOLDER]]\`
+  - **IMPORTANT**: CSS must be inline or in <style> block.
 
   **INPUT DATA**:
   ${JSON.stringify(aiAnalysisData, null, 2)}
@@ -399,46 +385,86 @@ export const generateCvHtml = async (cvData: any, userInstruction: string = ""):
 export const generateAdHtml = async (adData: any, customInstruction: string = ""): Promise<string> => {
   const ai = getClient();
   const seed = Date.now();
-  const jobCount = adData.jobs.length;
   
+  const jobsList = adData.jobs.map((j: any) => {
+    const benefits = [];
+    if (j.iqama) benefits.push("Iqama/Akama");
+    if (j.accommodation) benefits.push("Accommodation");
+    if (j.medical) benefits.push("Medical");
+    if (j.transport) benefits.push("Transport");
+    
+    // Add License Info if present
+    if (j.license) benefits.push(`${j.license} License Required`);
+
+    return `
+    Job: ${j.title}
+    Salary: ${j.salary} ${adData.currency}
+    Duty Hours: ${j.dutyHours ? j.dutyHours + ' Hours' : 'Standard'}
+    Count: ${j.count || 'Umlimited'}
+    Benefits Included: ${benefits.join(', ') || 'Standard'}
+    `;
+  }).join('\n----------------\n');
+
+  const footerPhoneHtml = adData.showSecondaryPhone 
+      ? `
+        <div style="font-size: 1.8em; font-weight: 800; color: #fff; line-height: 1.2;">0572603447</div>
+        <div style="font-size: 1.2em; color: #4ade80; margin-top: 5px; font-weight: bold;">
+            <span style="background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 4px;">0317 5674676</span> 
+            <span style="font-size: 0.7em; color: #fff; display: block;">(For sending documents only)</span>
+        </div>
+      `
+      : `<div style="font-size: 2.5em; font-weight: 800; color: #fff;">0572603447</div>`;
+
+  // Construction of Interview Details for Prompt
+  let interviewPromptDetails = "";
+  if (adData.showInterviewMode) {
+      interviewPromptDetails += `\n- **Interview Mode**: ${adData.interviewMode}`;
+  }
+  if (adData.showInterviewDate) {
+      interviewPromptDetails += `\n- **Interview Date**: ${adData.interviewDate}`;
+  }
+
   const prompt = `
-  You are a World-Class Graphic Designer for Social Media Advertising.
+  You are a World-Class Graphic Designer for Recruitment Ads.
   
   **TASK**: Create a High-Impact, **SQUARE (1080x1080px)** Recruitment Ad in HTML.
   
-  **DYNAMIC TEMPLATE SEED**: ${seed} (CRITICAL: Use this to create a COMPELTELY DIFFERENT LAYOUT from previous generations).
-  **USER CUSTOM INSTRUCTION**: "${customInstruction}"
+  **LANGUAGE**: The user wants the ad content in: **${adData.language}**.
+  - If "Urdu", translate Header, Job Titles, Duty Hours, Benefits, Interview Details, and Footer text to Urdu.
+  - If "Both", show English first, then Urdu translation below it in smaller text.
+  - Keep the Company Name and Country in English (or both).
   
-  **DESIGN VARIATION RULES (MANDATORY)**:
-  - **Layout**: Do NOT always use a standard grid. Randomize between:
-    - **Split Screen**: Image on left/top, text on right/bottom.
-    - **Overlay**: Full background image with semi-transparent text blocks.
-    - **Asymmetric**: Header diagonal, job list floating.
-    - **Card Grid**: Classic grid but with unique card shapes (rounded, skewed).
-  - **Color Palette**: Select a professional palette based on the "Company" or random (e.g., Deep Blue/Gold, Red/Black, Teal/White).
-  - **Typography**: Vary font pairings (Serif headers with Sans body, or Bold Condensed headers).
-
-  **STRICT CONSTRAINT**: The ad MUST be exactly 1080px height x 1080px width. **NO OVERFLOW OR SCROLLING**. Everything must fit perfectly.
-
-  **CONTENT REQUIREMENTS**:
-  1. **Header**: "URGENT REQUIREMENT FOR ${adData.country.toUpperCase()}" + "${adData.company}".
-  2. **Job List**: Display ${jobCount} jobs.
-     - For each job, show Title, Salary, Count.
-     - Include a high-quality Action Shot Image.
-  3. **Footer**: "BRING DOCUMENTS TO OFFICE", "Rana Trade Test Center – Attock", "0572603447".
-
-  **DATA TO RENDER**:
-  ${JSON.stringify(adData.jobs)}
-
-  **IMAGE GENERATION**:
-  For EACH job card, generate a custom <img> tag using Pollinations AI:
-  \`https://image.pollinations.ai/prompt/cinematic%20photo%20of%20{ACTION_DESCRIPTION}%20professional%20uniform%20high%20detail?width=600&height=600&nologo=true&seed=${seed}&model=flux\`
+  **CONTENT**:
+  - **Header (Top)**: "URGENT REQUIREMENT FOR ${adData.country.toUpperCase()}"
+  - **Company**: ${adData.company || ""}
+  - **Currency**: ${adData.currency}
+  - **Positions**:
+  ${jobsList}
+  ${interviewPromptDetails ? `\n- **Interview Details to Display**: ${interviewPromptDetails}` : ''}
+  - **Footer (Bottom)**: 
+    - Text: "IF YOU ARE INTERESTED BRING DOCUMENTS TO RANA OFFICE ATTOCK" (Translate if needed)
+    - Phones: (Insert the phone HTML block provided below)
   
-  - Replace {ACTION_DESCRIPTION} with a person actively doing the job (e.g. "plumber fixing pipe").
+  **VISUAL & LAYOUT RULES**:
+  1. **Dimensions**: STRICTLY 1080px Width x 1080px Height.
+  2. **Margins**: Add a **2cm (approx 75px) Padding/Margin** inside the container.
+  3. **Safe Zone**: The FOOTER area must have absolute priority. **Reserve the bottom 250px exclusively for the footer** so the phone numbers are NEVER cut off.
+  4. **Job List**: Use a flexible grid. If many jobs, reduce font size or use 2 columns.
+  5. **Theme**: Professional, Dark/High-Contrast.
+  6. **Images**: 
+     - For EACH job position, create an \`<img>\` tag.
+     - The \`src\` MUST be a Pollinations AI URL generating a specific image for that job.
+     - **Strict Image Rule**: The prompt in the URL MUST specify "**young energetic man**" or "**youth**". Explicitly exclude "old man" or "elderly".
+     - Format: \`https://image.pollinations.ai/prompt/cinematic%20photo%20of%20young%20energetic%20${adData.country}%20{JOB_TITLE_HERE}%20worker%20professional%20site?width=500&height=500&nologo=true&seed=${seed}&model=flux\`
+  
+  **USER CUSTOM OVERRIDE (IMPORTANT)**:
+  ${customInstruction ? `The user has provided specific instructions that OVERRIDE default styles: "${customInstruction}"` : ''}
 
   **TECHNICAL OUTPUT**:
   - Return **ONLY** raw HTML with embedded CSS.
-  - Container \`#ad-container\` must have \`width: 1080px; height: 1080px; overflow: hidden;\`.
+  - Root Container \`#ad-container\` must have \`width: 1080px; height: 1080px; overflow: hidden; position: relative;\`.
+  - The Footer DIV must be absolutely positioned at bottom.
+  - Footer Phone HTML Block to Insert: ${footerPhoneHtml}
   `;
 
   let text = "";

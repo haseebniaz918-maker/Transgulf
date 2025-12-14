@@ -3,7 +3,7 @@ import {
     Save, ZoomIn, ZoomOut, Type, Image as ImageIcon, 
     Wand2, X, ChevronLeft, ChevronRight, MousePointer2, 
     Hand, Pen, Eraser, Move, Trash2, Check, Plus, Undo2, Redo2,
-    Bold, Italic, Palette
+    Bold, Italic, Palette, Sparkles, Loader2
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { 
@@ -21,7 +21,7 @@ interface PdfEditorProps {
   onClose: () => void;
 }
 
-type EditorMode = 'select' | 'pan' | 'edit-text' | 'add-text' | 'image' | 'draw' | 'ai-fix';
+type EditorMode = 'select' | 'pan' | 'edit-text' | 'add-text' | 'image' | 'draw';
 
 interface AddedTextItem {
     id: string;
@@ -30,7 +30,6 @@ interface AddedTextItem {
     y: number; // PDF Coords
     size: number;
     color: string;
-    isEditing: boolean;
 }
 
 // Helper to manage history
@@ -46,7 +45,7 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
   const [numPages, setNumPages] = useState(0);
   const [pageNum, setPageNum] = useState(1);
   const [scale, setScale] = useState(1.2);
-  const [mode, setMode] = useState<EditorMode>('select'); // Start in select mode like Acrobat
+  const [mode, setMode] = useState<EditorMode>('select'); 
   
   // Data State
   const [textItems, setTextItems] = useState<TextItem[]>([]);
@@ -61,9 +60,16 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
   
   // Interaction State
   const [activeId, setActiveId] = useState<string | null>(null); 
+  const [editingId, setEditingId] = useState<string | null>(null); // For double-click to edit
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  
+  // Resizing State
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, w: 0, h: 0 });
+  
+  // Drawing State
   const [currentPath, setCurrentPath] = useState<{ x: number, y: number }[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   
@@ -125,7 +131,7 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
       if (history.length === 0) {
           pushHistory();
       }
-  }, []); // Run once on mount
+  }, []); 
 
   // --- Initialization ---
   useEffect(() => {
@@ -188,7 +194,7 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
   // --- Handlers ---
 
   const handleContainerClick = (e: React.MouseEvent) => {
-      if (isDragging) return;
+      if (isDragging || isResizing) return;
       
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
@@ -204,16 +210,17 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
               x: pdfCoords.x,
               y: pdfCoords.y,
               size: textSize,
-              color: textColor,
-              isEditing: true
+              color: textColor
           };
           setAddedTexts(prev => [...prev, newText]);
           setActiveId(newId);
+          setEditingId(newId); // Auto edit on create
           setMode('select'); 
           pushHistory();
       } else if (mode === 'select' || mode === 'edit-text') {
           if (e.target === canvasRef.current) {
               setActiveId(null);
+              setEditingId(null);
           }
       }
   };
@@ -252,18 +259,56 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
       } else if (activeId.startsWith('added-text-')) {
           setAddedTexts(prev => prev.filter(t => t.id !== activeId));
       } else if (activeId.startsWith('text-')) {
-          // Deleting existing text means setting it to empty string
           setEdits(prev => ({ ...prev, [activeId]: "" }));
       }
       setActiveId(null);
+      setEditingId(null);
       pushHistory();
+  };
+
+  const handleAiEnhance = async () => {
+      if (!activeId) return;
+      
+      let currentText = "";
+      if (activeId.startsWith('added-text-')) {
+          currentText = addedTexts.find(t => t.id === activeId)?.text || "";
+      } else if (activeId.startsWith('text-')) {
+          currentText = edits[activeId] !== undefined ? edits[activeId] : textItems.find(i => i.id === activeId)?.text || "";
+      }
+
+      if (!currentText) return;
+
+      setAiProcessingId(activeId);
+      try {
+          const enhanced = await generateText(`Improve grammar, clarity, and tone (Return ONLY the corrected text, no quotes): ${currentText}`);
+          
+          if (activeId.startsWith('added-text-')) {
+              setAddedTexts(prev => prev.map(t => t.id === activeId ? { ...t, text: enhanced } : t));
+          } else {
+              setEdits(prev => ({ ...prev, [activeId]: enhanced }));
+          }
+          pushHistory();
+      } catch (e) {
+          alert("AI Enhancement failed.");
+      } finally {
+          setAiProcessingId(null);
+      }
+  };
+
+  // --- Resize Logic ---
+  const handleResizeStart = (e: React.MouseEvent, id: string, w: number, h: number) => {
+      e.stopPropagation();
+      setActiveId(id);
+      setIsResizing(true);
+      setResizeStart({ x: e.clientX, y: e.clientY, w, h });
   };
 
   // --- Drag Logic ---
   const handleDragStart = (e: React.MouseEvent, id: string, type: 'image' | 'text') => {
-      if (mode !== 'select') return;
+      if (mode !== 'select' || isResizing) return;
       e.stopPropagation();
       setActiveId(id);
+      setEditingId(null); // Stop editing on drag
       setIsDragging(true);
       
       const rect = canvasRef.current!.getBoundingClientRect();
@@ -295,6 +340,53 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
   const handleMouseMove = (e: React.MouseEvent) => {
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
+      
+      if (isResizing && activeId) {
+          const dx = (e.clientX - resizeStart.x) / scale;
+          const dy = (e.clientY - resizeStart.y) / scale; // Useful if we implement free transform
+
+          // Image Resize Logic
+          if (activeId.startsWith('img-')) {
+              const img = images.find(i => i.id === activeId);
+              if (img) {
+                  let newW = Math.max(20, resizeStart.w + dx);
+                  let newH = 0;
+                  
+                  // By default, maintain aspect ratio. Hold Shift to break it.
+                  if (e.shiftKey) {
+                      // Free transform - naive implementation using mouse Y
+                      // In a real resize SE handle, y moves down.
+                      // Note: In PDF coords, Y grows up, but we mapped canvas coords.
+                      // Simplified: Just use aspect ratio unless Shift.
+                      // To do proper free transform we need to track Y delta accurately.
+                      // For now, let's use the aspect ratio logic inverted.
+                      // If Shift is pressed -> Use resizeStart.h + dy (inverted because mouse down = pixels down, pdf Y is up?)
+                      // Let's assume proportional for robustness unless requested otherwise.
+                      
+                      // Actually, let's look at the delta Y on screen
+                      const screenDy = (e.clientY - resizeStart.y) / scale;
+                      // aspect of visual rect
+                      newH = Math.max(20, resizeStart.h + screenDy * (img.height / img.width)); // Approximation
+                  } else {
+                      // Fixed Ratio
+                      const ratio = resizeStart.h / resizeStart.w;
+                      newH = newW * ratio;
+                  }
+                  
+                  // If Shift is pressed, allow breaking ratio (Free Transform)
+                  if (e.shiftKey) {
+                      const screenDy = (e.clientY - resizeStart.y) / scale;
+                      // This screenDy is positive when moving down.
+                      // We are dragging the Bottom-Right handle.
+                      newH = Math.max(20, resizeStart.h + screenDy); 
+                  }
+
+                  setImages(prev => prev.map(i => i.id === activeId ? { ...i, width: newW, height: newH } : i));
+              }
+          }
+          return;
+      }
+
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
@@ -331,6 +423,10 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
           setIsDragging(false);
           pushHistory();
       }
+      if (isResizing) {
+          setIsResizing(false);
+          pushHistory();
+      }
       
       if (isDrawing) {
           setIsDrawing(false);
@@ -353,8 +449,12 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
           setIsDrawing(true);
           const rect = canvasRef.current!.getBoundingClientRect();
           setCurrentPath([{ x: e.clientX - rect.left, y: e.clientY - rect.top }]);
-      } else if (mode === 'pan') {
-          // implement pan if needed, or rely on scroll
+      } else if (mode === 'select') {
+           // Deselect if clicking empty space
+           if (e.target === canvasRef.current || e.target === containerRef.current) {
+               setActiveId(null);
+               setEditingId(null);
+           }
       }
   };
 
@@ -423,6 +523,15 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
                             className="w-6 h-6 rounded bg-transparent cursor-pointer"
                           />
                       </div>
+                      <button 
+                        onClick={handleAiEnhance}
+                        disabled={!!aiProcessingId}
+                        className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white rounded text-xs font-bold transition-all shadow-lg"
+                        title="AI Enhance Text"
+                      >
+                         {aiProcessingId === activeId ? <Loader2 className="w-3 h-3 animate-spin"/> : <Sparkles className="w-3 h-3 fill-white" />}
+                         AI Enhance
+                      </button>
                   </>
               )}
               <button 
@@ -459,13 +568,13 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
             <ToolBtn icon={MousePointer2} active={mode === 'select'} onClick={() => setMode('select')} title="Selection Tool (V)" />
             <ToolBtn icon={Hand} active={mode === 'pan'} onClick={() => setMode('pan')} title="Pan Tool (H)" />
             <div className="w-[1px] h-5 bg-white/10 mx-2"></div>
-            <ToolBtn icon={Type} active={mode === 'edit-text'} onClick={() => { setMode('edit-text'); setActiveId(null); }} title="Edit Text" />
-            <ToolBtn icon={Plus} active={mode === 'add-text'} onClick={() => { setMode('add-text'); setActiveId(null); }} title="Add Text" />
+            <ToolBtn icon={Type} active={mode === 'edit-text'} onClick={() => { setMode('edit-text'); setActiveId(null); setEditingId(null); }} title="Edit Text" />
+            <ToolBtn icon={Plus} active={mode === 'add-text'} onClick={() => { setMode('add-text'); setActiveId(null); setEditingId(null); }} title="Add Text" />
             <label className={`p-2 rounded-lg cursor-pointer transition-all ${mode === 'image' ? 'bg-[#00f3ff]/20 text-[#00f3ff]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
                <ImageIcon className="w-4 h-4" />
                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
             </label>
-            <ToolBtn icon={Pen} active={mode === 'draw'} onClick={() => { setMode('draw'); setActiveId(null); }} title="Draw/Sign" />
+            <ToolBtn icon={Pen} active={mode === 'draw'} onClick={() => { setMode('draw'); setActiveId(null); setEditingId(null); }} title="Draw/Sign" />
         </div>
 
         {/* Right Actions */}
@@ -529,6 +638,7 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
                     const isDeleted = edits[item.id] === "";
                     const isModified = edits[item.id] !== undefined && edits[item.id] !== item.text;
                     const isSelected = activeId === item.id;
+                    const isEditing = editingId === item.id;
 
                     if (mode !== 'edit-text' && !isModified && !isDeleted) return null;
 
@@ -540,6 +650,13 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
                             onClick={(e) => {
                                 e.stopPropagation();
                                 if (mode === 'edit-text') setActiveId(item.id);
+                            }}
+                            onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                if (mode === 'edit-text') {
+                                    setActiveId(item.id);
+                                    setEditingId(item.id);
+                                }
                             }}
                         >
                             {/* Visual Box for Adobe feel */}
@@ -561,17 +678,24 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
                                      </div>
                                  </div>
                              ) : (
-                                <input 
-                                    type="text"
-                                    value={edits[item.id] ?? item.text}
-                                    onChange={(e) => {
-                                        setEdits(prev => ({...prev, [item.id]: e.target.value}));
-                                        // Note: We don't push history on every keystroke, ideally on blur or debounced.
-                                    }}
-                                    onBlur={pushHistory}
-                                    className="w-full h-full bg-transparent border-none focus:outline-none px-0.5 text-xs font-serif text-black cursor-text"
-                                    style={{ fontSize: `${item.fontSize * scale}px` }}
-                                />
+                                isEditing ? (
+                                    <textarea
+                                        autoFocus
+                                        value={edits[item.id] ?? item.text}
+                                        onChange={(e) => setEdits(prev => ({...prev, [item.id]: e.target.value}))}
+                                        onBlur={() => { setEditingId(null); pushHistory(); }}
+                                        className="w-full h-full bg-white text-black p-0 border-none resize-none overflow-hidden focus:outline-none"
+                                        style={{ fontSize: `${item.fontSize * scale}px`, fontFamily: 'sans-serif' }}
+                                    />
+                                ) : (
+                                    <div 
+                                        className="w-full h-full flex items-center overflow-hidden whitespace-nowrap"
+                                        style={{ fontSize: `${item.fontSize * scale}px`, fontFamily: 'sans-serif', color: 'transparent' }}
+                                    >
+                                        {/* Transparent placeholder to allow clicking, real text is on canvas below, unless modified */}
+                                        {isModified ? <span className="text-black">{edits[item.id]}</span> : item.text}
+                                    </div>
+                                )
                              )}
                         </div>
                     );
@@ -582,6 +706,7 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
                     const yCanvas = (canvasRef.current!.height - (txt.y * scale)) - (txt.size * scale);
                     const xCanvas = txt.x * scale;
                     const isSelected = activeId === txt.id;
+                    const isEditing = editingId === txt.id;
                     
                     return (
                         <div
@@ -594,19 +719,33 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
                            }}
                            onMouseDown={(e) => handleDragStart(e, txt.id, 'text')}
                            onClick={(e) => { e.stopPropagation(); setActiveId(txt.id); }}
+                           onDoubleClick={(e) => { e.stopPropagation(); setActiveId(txt.id); setEditingId(txt.id); }}
                         >
-                            <input 
-                                value={txt.text}
-                                onChange={(e) => setAddedTexts(prev => prev.map(t => t.id === txt.id ? { ...t, text: e.target.value } : t))}
-                                onBlur={pushHistory}
-                                className={`bg-transparent border p-1 transition-all ${isSelected ? 'border-[#00f3ff] bg-white/80 shadow-sm' : 'border-transparent hover:border-dashed hover:border-slate-400'}`}
-                                style={{ 
-                                    fontSize: `${txt.size * scale}px`, 
-                                    color: txt.color,
-                                    width: `${Math.max(txt.text.length + 1, 5)}ch`
-                                }}
-                            />
-                            {isSelected && (
+                            {isEditing ? (
+                                <textarea
+                                    autoFocus
+                                    value={txt.text}
+                                    onChange={(e) => setAddedTexts(prev => prev.map(t => t.id === txt.id ? { ...t, text: e.target.value } : t))}
+                                    onBlur={() => { setEditingId(null); pushHistory(); }}
+                                    className="bg-white border border-[#00f3ff] text-black p-1 min-w-[100px] resize-none overflow-hidden"
+                                    style={{ 
+                                        fontSize: `${txt.size * scale}px`, 
+                                        color: txt.color,
+                                    }}
+                                />
+                            ) : (
+                                <div 
+                                    className={`p-1 border transition-all ${isSelected ? 'border-[#00f3ff] bg-white/50 shadow-sm' : 'border-transparent hover:border-dashed hover:border-slate-400'}`}
+                                    style={{ 
+                                        fontSize: `${txt.size * scale}px`, 
+                                        color: txt.color,
+                                    }}
+                                >
+                                    {txt.text}
+                                </div>
+                            )}
+                            
+                            {isSelected && !isEditing && (
                                 <>
                                     <div className="absolute -top-1 -left-1 w-2 h-2 bg-[#00f3ff] border border-white"></div>
                                     <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#00f3ff] border border-white"></div>
@@ -643,29 +782,14 @@ export const PdfEditor: React.FC<PdfEditorProps> = ({ file, onClose }) => {
                              <div className={`absolute inset-0 border-2 transition-colors ${isSelected ? 'border-[#00f3ff]' : 'border-transparent group-hover:border-[#00f3ff]/30'}`}>
                                  {isSelected && (
                                      <>
+                                         {/* Resize Handles */}
+                                         <div 
+                                            className="absolute -bottom-2 -right-2 w-4 h-4 bg-[#00f3ff] border-2 border-white rounded-full cursor-se-resize z-50 shadow-lg"
+                                            onMouseDown={(e) => handleResizeStart(e, img.id, img.width, img.height)}
+                                         ></div>
                                          <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-[#00f3ff] border-2 border-white rounded-full"></div>
                                          <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-[#00f3ff] border-2 border-white rounded-full"></div>
                                          <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-[#00f3ff] border-2 border-white rounded-full"></div>
-                                         <div 
-                                            className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-[#00f3ff] border-2 border-white rounded-full cursor-se-resize"
-                                            onMouseDown={(e) => {
-                                                e.stopPropagation();
-                                                const startX = e.clientX;
-                                                const startW = img.width;
-                                                const startH = img.height;
-                                                const onMove = (ev: MouseEvent) => {
-                                                    const delta = (ev.clientX - startX) / scale;
-                                                    setImages(prev => prev.map(i => i.id === img.id ? { ...i, width: Math.max(20, startW + delta), height: Math.max(20, startH + delta * (startH/startW)) } : i));
-                                                };
-                                                const onUp = () => {
-                                                    window.removeEventListener('mousemove', onMove);
-                                                    window.removeEventListener('mouseup', onUp);
-                                                    pushHistory();
-                                                };
-                                                window.addEventListener('mousemove', onMove);
-                                                window.addEventListener('mouseup', onUp);
-                                            }}
-                                         ></div>
                                      </>
                                  )}
                              </div>

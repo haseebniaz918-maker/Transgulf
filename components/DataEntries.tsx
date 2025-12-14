@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Database, Save, FileSpreadsheet, Search, Trash2, MapPin, Phone, Briefcase, User, Upload, AlertCircle } from 'lucide-react';
+import { Database, Save, FileSpreadsheet, Search, Trash2, MapPin, Phone, Briefcase, User, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface WorkerEntry {
   id: string;
@@ -75,6 +75,7 @@ export const DataEntries: React.FC = () => {
   });
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [showSaveAnimation, setShowSaveAnimation] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState<string>('');
 
@@ -94,9 +95,29 @@ export const DataEntries: React.FC = () => {
     localStorage.setItem('bhattis_data_entries', JSON.stringify(newEntries));
   };
 
+  const formatPhoneNumber = (val: string) => {
+    // Remove non-digits
+    const raw = val.replace(/\D/g, '');
+    
+    // Check if it starts with 03 (only enforce logic if length is enough to check)
+    // We allow typing freely but format 03XX XXXXXXX
+    
+    if (raw.length <= 4) return raw;
+    return `${raw.slice(0, 4)} ${raw.slice(4, 11)}`;
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    if (name === 'province') {
+    
+    if (name === 'phone1' || name === 'phone2') {
+        const formatted = formatPhoneNumber(value);
+        if (formatted.length <= 12) { // 11 digits + 1 space
+             setFormData(prev => ({ ...prev, [name]: formatted }));
+        }
+    } else if (name === 'age') {
+        // Enforce max 3 chars
+        if (value.length <= 3) setFormData(prev => ({ ...prev, age: value }));
+    } else if (name === 'province') {
         setFormData(prev => ({ ...prev, province: value, district: '', city: '' }));
     } else if (name === 'district') {
         setFormData(prev => ({ ...prev, district: value, city: '' }));
@@ -105,11 +126,45 @@ export const DataEntries: React.FC = () => {
     }
   };
 
+  const validateEntry = () => {
+      // Age Validation
+      if (formData.age) {
+          const ageNum = parseInt(formData.age);
+          if (isNaN(ageNum) || ageNum >= 100) {
+              alert("Age must be valid and less than 100.");
+              return false;
+          }
+      }
+
+      // Phone Validation
+      const validatePhone = (p: string, label: string) => {
+          const raw = p.replace(/\s/g, '');
+          if (raw.length > 0) {
+              if (!raw.startsWith('03')) {
+                  alert(`${label} must start with 03.`);
+                  return false;
+              }
+              if (raw.length !== 11) {
+                  alert(`${label} must be exactly 11 digits.`);
+                  return false;
+              }
+          } else if (label === 'Phone 1') {
+              alert("Phone 1 is required.");
+              return false;
+          }
+          return true;
+      };
+
+      if (!formData.name) { alert("Name is required."); return false; }
+      if (!formData.trade) { alert("Trade is required."); return false; }
+      if (!validatePhone(formData.phone1, 'Phone 1')) return false;
+      if (formData.phone2 && !validatePhone(formData.phone2, 'Phone 2')) return false;
+
+      return true;
+  };
+
   const handleSaveEntry = () => {
-    if (!formData.name || !formData.phone1 || !formData.trade) {
-        alert("Please fill required fields (Name, Phone, Trade).");
-        return;
-    }
+    if (!validateEntry()) return;
 
     const newEntry: WorkerEntry = {
         id: Date.now().toString(),
@@ -120,6 +175,10 @@ export const DataEntries: React.FC = () => {
     const updatedEntries = [newEntry, ...entries];
     saveToStorage(updatedEntries);
     
+    // Trigger Animation
+    setShowSaveAnimation(true);
+    setTimeout(() => setShowSaveAnimation(false), 2000);
+
     setFormData({
         name: '', fatherName: '', age: '', phone1: '', phone2: '', 
         trade: '', province: '', district: '', city: '', remarks: ''
@@ -202,17 +261,35 @@ export const DataEntries: React.FC = () => {
     
     const wb = XLSX.utils.book_new();
 
+    // -- Styling & Header Prep --
+    // Since basic XLSX js doesn't support styles in free version easily, we focus on Structure.
+    // We will create a Master Sheet.
+
     const masterData = prepareDataForSheet([...entries].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    
+    // Convert JSON to Sheet
     const wsMaster = XLSX.utils.json_to_sheet(masterData);
     
+    // Auto-width columns (approximation)
     const wscols = [
-        { wch: 6 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 6 }, 
-        { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 30 }
+        { wch: 6 },  // Sr
+        { wch: 12 }, // Date
+        { wch: 20 }, // Name
+        { wch: 20 }, // Father
+        { wch: 6 },  // Age
+        { wch: 15 }, // Phone 1
+        { wch: 15 }, // Phone 2
+        { wch: 20 }, // Trade
+        { wch: 15 }, // Province
+        { wch: 15 }, // Dist
+        { wch: 15 }, // City
+        { wch: 30 }  // Remarks
     ];
     wsMaster['!cols'] = wscols;
     
     XLSX.utils.book_append_sheet(wb, wsMaster, "Master Database");
 
+    // Group by Date for Separate Sheets
     const grouped: Record<string, any[]> = {};
     entries.forEach(entry => {
         if (!grouped[entry.date]) grouped[entry.date] = [];
@@ -236,8 +313,23 @@ export const DataEntries: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col xl:flex-row gap-8 animate-fade-in pb-20">
+    <div className="flex flex-col xl:flex-row gap-8 animate-fade-in pb-20 relative">
       
+      {/* Save Animation Overlay */}
+      {showSaveAnimation && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+              <div className="bg-slate-900/90 border border-cyan-400 p-8 rounded-3xl flex flex-col items-center gap-4 animate-pop-in shadow-[0_0_50px_rgba(0,243,255,0.5)]">
+                  <div className="w-20 h-20 bg-cyan-400 rounded-full flex items-center justify-center animate-bounce">
+                      <CheckCircle2 size={40} className="text-black" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white tracking-widest uppercase">Entry Saved</h3>
+                  <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-cyan-400 animate-[width_1s_ease-out]"></div>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* LEFT: Data Entry Form */}
       <div className="flex-1 xl:max-w-md">
         <div className="glass-card p-6 rounded-2xl sticky top-24">
@@ -265,16 +357,25 @@ export const DataEntries: React.FC = () => {
 
                 <div className="grid grid-cols-[1fr_2fr] gap-4">
                     <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Age</label>
-                        <input name="age" type="number" value={formData.age} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="25" />
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Age (&lt;100)</label>
+                        <input name="age" type="number" value={formData.age} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="25" max={99} />
                     </div>
                     <div className="flex flex-col gap-1">
-                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone 1 *</label>
+                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone 1 (03xx) *</label>
                          <div className="relative">
-                            <input name="phone1" value={formData.phone1} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="0300-1234567" />
+                            <input name="phone1" value={formData.phone1} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="0300 1234567" maxLength={12} />
                             <Phone size={16} className="absolute left-3 top-2.5 text-slate-500" />
                          </div>
                     </div>
+                </div>
+
+                {/* Second Phone Number */}
+                <div className="flex flex-col gap-1">
+                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone 2 (Optional)</label>
+                     <div className="relative">
+                        <input name="phone2" value={formData.phone2} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="0300 1234567" maxLength={12} />
+                        <Phone size={16} className="absolute left-3 top-2.5 text-slate-500" />
+                     </div>
                 </div>
 
                 <div className="flex flex-col gap-1">
@@ -358,7 +459,7 @@ export const DataEntries: React.FC = () => {
                         onClick={exportAllSheets}
                         className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg transition-transform hover:-translate-y-0.5"
                       >
-                         <FileSpreadsheet size={16} /> Export Sheets
+                         <FileSpreadsheet size={16} /> Export Professional Excel
                       </button>
                   </div>
               </div>
@@ -399,7 +500,10 @@ export const DataEntries: React.FC = () => {
                                          {entry.trade}
                                      </span>
                                  </td>
-                                 <td className="p-4 text-slate-300">{entry.phone1}</td>
+                                 <td className="p-4 text-slate-300">
+                                     <div>{entry.phone1}</div>
+                                     {entry.phone2 && <div className="text-xs text-slate-500">{entry.phone2}</div>}
+                                 </td>
                                  <td className="p-4 text-slate-400 text-xs">{entry.city}, {entry.province}</td>
                                  <td className="p-4 text-right">
                                      <button onClick={() => handleDelete(entry.id)} className="text-red-400 hover:text-red-300 hover:bg-red-400/10 p-2 rounded-lg transition-colors">
