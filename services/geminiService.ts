@@ -137,6 +137,52 @@ export const validateProfileData = async (nationality: string, phone: string, em
     }
 };
 
+export const validateNominationDetails = async (gmail: string, bankName: string, iban: string): Promise<{
+  gmail: { isValid: boolean; message: string };
+  bank: { isValid: boolean; correctedName: string; message: string };
+  iban: { isValid: boolean; message: string };
+}> => {
+  try {
+      const ai = getClient();
+      const prompt = `
+      You are a Banking Data Validator. Analyze these 3 fields:
+      
+      1. **Gmail**: "${gmail}"
+         - Check if it is a valid Gmail address format.
+      
+      2. **Bank Name**: "${bankName}"
+         - Fix grammar or spelling (e.g., "hbl bank" -> "HBL", "meezaan" -> "Meezan Bank").
+         - If it looks completely invalid, mark invalid.
+      
+      3. **IBAN**: "${iban}"
+         - Check if the length and format look plausible for an International Bank Account Number (usually 24 chars for PK).
+         - Ignore spaces in your validation logic, just check the alphanumeric structure.
+
+      **Return JSON ONLY**:
+      {
+        "gmail": { "isValid": boolean, "message": "string" },
+        "bank": { "isValid": boolean, "correctedName": "string", "message": "string" },
+        "iban": { "isValid": boolean, "message": "string" }
+      }
+      `;
+
+      const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: { responseMimeType: 'application/json' }
+      });
+
+      return JSON.parse(response.text || "{}");
+  } catch (e) {
+      console.error(e);
+      return {
+          gmail: { isValid: true, message: "Skipped" },
+          bank: { isValid: true, correctedName: bankName, message: "Skipped" },
+          iban: { isValid: true, message: "Skipped" }
+      };
+  }
+};
+
 export const generateImageDescription = async (base64Image: string, mimeType: string): Promise<string> => {
    try {
     const ai = getClient();
