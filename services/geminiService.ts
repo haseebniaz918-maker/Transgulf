@@ -471,46 +471,52 @@ export const generateAdHtml = async (adData: any, customInstruction: string = ""
   }
 
   const prompt = `
-  You are a World-Class Graphic Designer for Recruitment Ads.
+  You are an Elite Digital Marketing Art Director & Senior Frontend Developer.
   
-  **TASK**: Create a High-Impact, **SQUARE (1080x1080px)** Recruitment Ad in HTML.
+  **TASK**: 
+  Create a **LUXURY, HIGH-IMPACT, SQUARE (1080x1080px)** Recruitment Ad in pure HTML/CSS.
   
-  **LANGUAGE**: The user wants the ad content in: **${adData.language}**.
-  - If "Urdu", translate Header, Job Titles, Duty Hours, Benefits, Interview Details, and Footer text to Urdu.
-  - If "Both", show English first, then Urdu translation below it in smaller text.
-  - Keep the Company Name and Country in English (or both).
+  **DESIGN LANGUAGE**:
+  - **Style**: Ultra-Modern, Premium, High-Contrast. Think "Black & Gold" or "Deep Navy & Neon Cyan".
+  - **Aesthetics**: Glassmorphism cards, glowing gradients, bold typography (Roboto/Montserrat).
+  - **Layout**: Use a powerful CSS Grid layout. Ensure it looks like a professional Photoshop poster.
   
-  **CONTENT**:
-  - **Header (Top)**: "URGENT REQUIREMENT FOR ${adData.country.toUpperCase()}"
+  **CONTENT DATA**:
+  - **Header**: "URGENT HIRING FOR ${adData.country.toUpperCase()}"
   - **Company**: ${adData.company || ""}
   - **Currency**: ${adData.currency}
   - **Positions**:
   ${jobsList}
-  ${interviewPromptDetails ? `\n- **Interview Details to Display**: ${interviewPromptDetails}` : ''}
-  - **Footer (Bottom)**: 
-    - Text: "IF YOU ARE INTERESTED BRING DOCUMENTS TO RANA OFFICE ATTOCK" (Translate if needed)
+  ${interviewPromptDetails ? `\n- **Interview Details**: ${interviewPromptDetails}` : ''}
+  - **Footer**: 
+    - "IF YOU ARE INTERESTED BRING DOCUMENTS TO RANA OFFICE ATTOCK" (Translate if language is Urdu)
     - Phones: (Insert the phone HTML block provided below)
   
-  **VISUAL & LAYOUT RULES**:
-  1. **Dimensions**: STRICTLY 1080px Width x 1080px Height.
-  2. **Margins**: Add a **2cm (approx 75px) Padding/Margin** inside the container.
-  3. **Safe Zone**: The FOOTER area must have absolute priority. **Reserve the bottom 250px exclusively for the footer** so the phone numbers are NEVER cut off.
-  4. **Job List**: Use a flexible grid. If many jobs, reduce font size or use 2 columns.
-  5. **Theme**: Professional, Dark/High-Contrast.
-  6. **Images**: 
-     - For EACH job position, create an \`<img>\` tag.
-     - The \`src\` MUST be a Pollinations AI URL generating a specific image for that job.
-     - **Strict Image Rule**: The prompt in the URL MUST specify "**young energetic man**" or "**youth**". Explicitly exclude "old man" or "elderly".
-     - Format: \`https://image.pollinations.ai/prompt/cinematic%20photo%20of%20young%20energetic%20${adData.country}%20{JOB_TITLE_HERE}%20worker%20professional%20site?width=500&height=500&nologo=true&seed=${seed}&model=flux\`
+  **LANGUAGE RULES**:
+  - User requested: **${adData.language}**.
+  - If "Urdu": Translate Header, Job Titles, Benefits, and Footer instructions to Urdu.
+  - If "Both": Show English Heading, then Urdu Subheading.
   
-  **USER CUSTOM OVERRIDE (IMPORTANT)**:
-  ${customInstruction ? `The user has provided specific instructions that OVERRIDE default styles: "${customInstruction}"` : ''}
+  **STRICT VISUAL RULES (DO NOT BREAK)**:
+  1. **Dimensions**: Root container MUST be \`width: 1080px; height: 1080px;\` fixed. No percentage widths for root.
+  2. **Margins**: Main content must have 50px padding.
+  3. **Typography**: Large, readable, bold fonts.
+  4. **Job Cards**: Each job should be a distinct card with a glass effect background.
+  
+  **IMAGE GENERATION RULES (CRITICAL)**:
+  - For EACH job, generate an \`<img>\` tag using Pollinations AI.
+  - **PROMPT ENGINEERING**: You MUST enforce "YOUNG MAN" in the prompt.
+  - **URL Structure**: \`https://image.pollinations.ai/prompt/cinematic%20portrait%20of%20a%20young%20handsome%2025%20year%20old%20${adData.country}%20{JOB_TITLE_HERE}%20worker%20man%20professional%20uniform%20site%204k%20lighting?width=400&height=400&nologo=true&seed=${seed}\`
+  - **FORBIDDEN**: Do not generate images of old men, sketches, or cartoons. Realism only.
+  
+  **USER OVERRIDE**:
+  ${customInstruction ? `User Custom Instructions (Highest Priority): "${customInstruction}"` : ''}
 
-  **TECHNICAL OUTPUT**:
-  - Return **ONLY** raw HTML with embedded CSS.
-  - Root Container \`#ad-container\` must have \`width: 1080px; height: 1080px; overflow: hidden; position: relative;\`.
-  - The Footer DIV must be absolutely positioned at bottom.
-  - Footer Phone HTML Block to Insert: ${footerPhoneHtml}
+  **OUTPUT FORMAT**:
+  - Return **ONLY** raw HTML code.
+  - CSS must be embedded in \`<style>\`.
+  - Root div must have ID \`ad-container\`.
+  - Footer Phone HTML to insert: ${footerPhoneHtml}
   `;
 
   let text = "";

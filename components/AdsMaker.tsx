@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { generateAdHtml } from '../services/geminiService';
-import { Plus, Trash2, Megaphone, Globe, Building, DollarSign, Download, Users, HeartPulse, Bus, Home, Image as ImageIcon, Clock, CreditCard, MessageCircle, Languages, Calendar, UserCheck, Sparkles, Car } from 'lucide-react';
+import { Plus, Trash2, Megaphone, Globe, Building, DollarSign, Download, Users, HeartPulse, Bus, Home, Image as ImageIcon, Clock, CreditCard, MessageCircle, Languages, Calendar, UserCheck, Sparkles, Car, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
 declare const html2canvas: any;
 
@@ -36,6 +36,9 @@ export const AdsMaker: React.FC = () => {
   ]);
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Preview Zoom State
+  const [previewScale, setPreviewScale] = useState(0.4);
 
   const addJob = () => {
       setJobs([...jobs, { id: Date.now(), title: '', salary: '', count: '', dutyHours: '8', accommodation: true, medical: true, transport: true, iqama: true, license: '' }]);
@@ -96,6 +99,7 @@ export const AdsMaker: React.FC = () => {
       container.style.position = 'fixed';
       container.style.top = '-10000px';
       container.style.left = '-10000px';
+      // Strict dimensions for the capture
       container.style.width = '1080px';
       container.style.height = '1080px';
       container.innerHTML = generatedHtml;
@@ -137,14 +141,14 @@ export const AdsMaker: React.FC = () => {
     <div className="flex flex-col gap-8 max-w-[1600px] mx-auto animate-fade-in pb-20">
        <div className="text-center">
            <h1 className="text-5xl font-bold text-cyan-400 font-display drop-shadow-[0_0_15px_rgba(0,243,255,0.4)] flex items-center justify-center gap-3">
-               <Megaphone size={40} className="text-white"/> ADS MAKER
+               <Megaphone size={40} className="text-white"/> ADS MAKER <span className="text-xs bg-cyan-400 text-black px-2 py-1 rounded">PRO</span>
            </h1>
-           <p className="text-slate-400 mt-2">Create High-Impact Recruitment Ads for Social Media</p>
+           <p className="text-slate-400 mt-2">Create High-Impact, Premium Recruitment Ads for Social Media</p>
        </div>
 
-       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
            {/* LEFT: Inputs */}
-           <div className="lg:col-span-5 flex flex-col gap-6">
+           <div className="xl:col-span-5 flex flex-col gap-6">
                <div className="glass-card p-6 rounded-2xl flex flex-col gap-6">
                    <h3 className="text-white font-bold border-b border-white/10 pb-2">Campaign Details</h3>
                    
@@ -384,44 +388,81 @@ export const AdsMaker: React.FC = () => {
                </button>
            </div>
 
-           {/* RIGHT: Preview */}
-           <div className="lg:col-span-7 flex flex-col items-center">
-               <div className="w-full max-w-[600px] aspect-square bg-slate-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative">
-                   {isGenerating ? (
-                       <div className="absolute inset-0 z-20 bg-slate-950 flex flex-col items-center justify-center animate-fade-in">
-                           <div className="relative w-32 h-32 mb-6">
-                                {/* Artistic Loader */}
-                                <div className="absolute inset-0 border-4 border-cyan-400/20 rounded-full animate-ping"></div>
-                                <div className="absolute inset-4 border-4 border-t-cyan-400 border-r-cyan-400 border-b-transparent border-l-transparent rounded-full animate-spin"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <Megaphone size={32} className="text-cyan-400 animate-pulse" />
-                                </div>
+           {/* RIGHT: Preview (Scaled Viewport) */}
+           <div className="xl:col-span-7 flex flex-col items-center sticky top-8">
+               
+               {/* Viewport Container */}
+               <div className="w-full bg-slate-950 border-4 border-slate-900 rounded-3xl overflow-hidden shadow-2xl relative flex flex-col">
+                   
+                   {/* Window Header */}
+                   <div className="bg-slate-900 p-4 border-b border-white/10 flex justify-between items-center z-10">
+                        <div className="flex gap-2">
+                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <div className="flex items-center gap-2 bg-black/40 px-3 py-1 rounded-full text-xs text-slate-400">
+                             <Maximize2 size={12} /> 1080x1080px Preview
+                        </div>
+                        {generatedHtml && (
+                            <div className="flex gap-2">
+                                <button onClick={() => setPreviewScale(s => Math.max(0.2, s - 0.1))} className="p-1 hover:text-white text-slate-500"><ZoomOut size={16}/></button>
+                                <button onClick={() => setPreviewScale(s => Math.min(1.0, s + 0.1))} className="p-1 hover:text-white text-slate-500"><ZoomIn size={16}/></button>
+                            </div>
+                        )}
+                   </div>
+
+                   {/* Scale Wrapper */}
+                   <div className="w-full aspect-square bg-slate-900 relative overflow-hidden flex items-center justify-center">
+                       {isGenerating ? (
+                           <div className="absolute inset-0 z-20 bg-slate-950 flex flex-col items-center justify-center animate-fade-in">
+                               <div className="relative w-32 h-32 mb-6">
+                                    <div className="absolute inset-0 border-4 border-cyan-400/20 rounded-full animate-ping"></div>
+                                    <div className="absolute inset-4 border-4 border-t-cyan-400 border-r-cyan-400 border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <Megaphone size={32} className="text-cyan-400 animate-pulse" />
+                                    </div>
+                               </div>
+                               <h2 className="text-2xl font-bold text-white tracking-widest animate-pulse text-center">CREATING AD...</h2>
+                               <p className="text-cyan-400 mt-2 font-mono text-xs text-center px-8">DESIGNING LAYOUT • FETCHING YOUNG WORKFORCE IMAGES • APPLYING BRANDING</p>
                            </div>
-                           <h2 className="text-2xl font-bold text-white tracking-widest animate-pulse text-center">CREATING AD...</h2>
-                           <p className="text-cyan-400 mt-2 font-mono text-xs text-center px-8">DESIGNING LAYOUT • FETCHING IMAGES • APPLYING BRANDING</p>
-                       </div>
-                   ) : generatedHtml ? (
-                       <iframe 
-                          srcDoc={generatedHtml} 
-                          className="w-full h-full border-none" 
-                          title="Ad Preview"
-                       />
-                   ) : (
-                       <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600 bg-slate-950">
-                           <Megaphone size={64} className="opacity-20 mb-4"/>
-                           <p className="font-bold text-lg">Ad Workspace</p>
-                           <p className="text-sm opacity-50">Generated Ads will appear here</p>
-                       </div>
-                   )}
+                       ) : generatedHtml ? (
+                           // The Transform Container
+                           <div 
+                                style={{ 
+                                    width: '1080px', 
+                                    height: '1080px', 
+                                    transform: `scale(${previewScale})`, 
+                                    transformOrigin: 'center center',
+                                    backgroundColor: 'white',
+                                    boxShadow: '0 0 50px rgba(0,0,0,0.5)'
+                                }}
+                                className="transition-transform duration-300 ease-out"
+                           >
+                               <iframe 
+                                  srcDoc={generatedHtml} 
+                                  className="w-full h-full border-none" 
+                                  title="Ad Preview"
+                                  sandbox="allow-scripts"
+                               />
+                           </div>
+                       ) : (
+                           <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600 bg-dots">
+                               <Megaphone size={64} className="opacity-20 mb-4"/>
+                               <p className="font-bold text-lg">Ad Workspace</p>
+                               <p className="text-sm opacity-50">Generated Ads will appear here</p>
+                           </div>
+                       )}
+                   </div>
                </div>
 
                {generatedHtml && !isGenerating && (
-                   <div className="flex gap-4 mt-6">
+                   <div className="flex gap-4 mt-6 w-full justify-center">
                         <button 
                             onClick={handleDownloadImage}
-                            className="px-8 py-3 bg-cyan-400 hover:bg-cyan-300 text-black rounded-xl font-bold flex items-center gap-2 transition-all shadow-neon"
+                            className="px-8 py-3 bg-cyan-400 hover:bg-cyan-300 text-black rounded-xl font-bold flex items-center gap-2 transition-all shadow-neon hover:-translate-y-1"
                         >
-                            <ImageIcon size={20}/> Download Image
+                            <ImageIcon size={20}/> Download High-Res (PNG)
                         </button>
                         <button 
                             onClick={handleDownloadHtml}
