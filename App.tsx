@@ -7,13 +7,13 @@ import { CvForge } from './components/CvForge';
 import { Nomination } from './components/Nomination';
 import { AdsMaker } from './components/AdsMaker';
 import { DataEntries } from './components/DataEntries';
+import { VisaMedicalAssistant } from './components/VisaMedicalAssistant';
 import { Section } from './types';
 
 export default function App() {
   const [introComplete, setIntroComplete] = useState(false);
   const [activeSection, setActiveSection] = useState<Section>(Section.PDF_TOOLS);
 
-  // Render the appropriate component based on section
   const renderContent = () => {
     switch (activeSection) {
       case Section.PDF_TOOLS:
@@ -28,6 +28,8 @@ export default function App() {
         return <AdsMaker />;
       case Section.DATA_ENTRIES:
         return <DataEntries />;
+      case Section.VISA_MEDICAL_HUB:
+        return <VisaMedicalAssistant />;
       default:
         return <PdfTools />;
     }
@@ -46,7 +48,6 @@ export default function App() {
         />
         
         <main className="relative flex-1">
-          {/* Ambient Background Glows */}
           <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-cyan-400/10 blur-[120px] rounded-full pointer-events-none z-0 mix-blend-screen"></div>
           
           <div className="relative z-10 p-6 max-w-[1600px] mx-auto animate-fade-in">

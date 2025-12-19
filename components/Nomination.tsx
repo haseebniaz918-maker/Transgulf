@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { FileText, User, Upload, CheckCircle, ArrowRight, Download, RefreshCw, Smartphone, Mail, CreditCard, Landmark, AlertTriangle, Loader2 } from 'lucide-react';
+import { FileText, User, Upload, CheckCircle, ArrowRight, Download, RefreshCw, Smartphone, Mail, CreditCard, Landmark, AlertTriangle, Loader2, FileType } from 'lucide-react';
 import { validateNominationDetails } from '../services/geminiService';
+
+declare const html2pdf: any;
 
 const InputGroup = ({ label, icon, name, value, onChange, placeholder, error, success }: any) => (
   <div className="flex flex-col gap-2">
@@ -37,20 +39,16 @@ export const Nomination: React.FC = () => {
   const [cnicFront, setCnicFront] = useState<File | null>(null);
   const [cnicBack, setCnicBack] = useState<File | null>(null);
   const [generatedA4, setGeneratedA4] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const formatMobile = (val: string) => {
-    // Remove non-digit characters
     const raw = val.replace(/\D/g, '');
-    
-    // Format: 0312 3456789 (4 digits + space + 7 digits)
     if (raw.length <= 4) return raw;
     return `${raw.slice(0, 4)} ${raw.slice(4, 11)}`;
   };
 
   const formatIBAN = (val: string) => {
-      // Remove non-alphanumeric and convert to uppercase
       const raw = val.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-      // Insert space every 4 characters
       const matches = raw.match(/.{1,4}/g);
       return matches ? matches.join(' ') : raw;
   };
@@ -66,8 +64,6 @@ export const Nomination: React.FC = () => {
     }
 
     setFormData({ ...formData, [name]: formattedValue });
-    
-    // Clear validation status on change
     if (validationErrors[name]) setValidationErrors(prev => ({...prev, [name]: ''}));
     if (validationSuccess[name]) setValidationSuccess(prev => ({...prev, [name]: false}));
   };
@@ -86,15 +82,12 @@ export const Nomination: React.FC = () => {
       
       try {
         const result = await validateNominationDetails(formData.gmail, formData.bankName, formData.iban);
-        
         const newErrors: Record<string, string> = {};
         const newSuccess: Record<string, boolean> = {};
 
-        // Gmail
         if (!result.gmail.isValid) newErrors.gmail = result.gmail.message;
         else if (formData.gmail) newSuccess.gmail = true;
 
-        // Bank Name (Auto-correct if needed)
         if (!result.bank.isValid) {
             newErrors.bankName = result.bank.message;
         } else {
@@ -104,17 +97,14 @@ export const Nomination: React.FC = () => {
             if (formData.bankName) newSuccess.bankName = true;
         }
 
-        // IBAN
         if (!result.iban.isValid) newErrors.iban = result.iban.message;
         else if (formData.iban) newSuccess.iban = true;
 
         setValidationErrors(newErrors);
         setValidationSuccess(newSuccess);
-
         return Object.keys(newErrors).length === 0;
       } catch (e) {
-          console.error("Validation error", e);
-          return true; // Proceed if AI fails, don't block user
+          return true; 
       } finally {
           setIsValidating(false);
       }
@@ -122,40 +112,25 @@ export const Nomination: React.FC = () => {
 
   const generateA4Page = async () => {
     if (!cnicFront || !cnicBack || !formData.name) return alert("Missing fields (Name, CNIC Images).");
-    
-    // Trigger validation
     const isValid = await validateFields();
-    if (!isValid) {
-        alert("Please fix the validation errors before generating.");
-        return;
-    }
+    if (!isValid) return alert("Please fix the validation errors.");
     
     const canvas = document.createElement('canvas');
-    canvas.width = 1240; canvas.height = 1754; // A4 @ 150 DPI approx
+    canvas.width = 1240; canvas.height = 1754; 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Background
     ctx.fillStyle = 'white'; ctx.fillRect(0,0,1240,1754);
-    
-    // Header
-    ctx.fillStyle = 'black'; 
-    ctx.font = 'bold 50px Arial'; 
-    ctx.textAlign = 'center';
+    ctx.fillStyle = 'black'; ctx.font = 'bold 50px Arial'; ctx.textAlign = 'center';
     ctx.fillText('NOMINATION FORM', 620, 100);
     
-    // Content Layout
-    ctx.textAlign = 'left';
-    ctx.font = '24px Arial';
+    ctx.textAlign = 'left'; ctx.font = '24px Arial';
     const lineHeight = 50;
     let startY = 200;
 
-    // Helper for rows
     const drawRow = (label: string, value: string, y: number) => {
-        ctx.font = 'bold 24px Arial';
-        ctx.fillText(label, 100, y);
-        ctx.font = '24px Arial';
-        ctx.fillText(value || 'N/A', 400, y);
+        ctx.font = 'bold 24px Arial'; ctx.fillText(label, 100, y);
+        ctx.font = '24px Arial'; ctx.fillText(value || 'N/A', 400, y);
     };
 
     drawRow("Name:", formData.name, startY);
@@ -165,7 +140,6 @@ export const Nomination: React.FC = () => {
     drawRow("Bank Name:", formData.bankName, startY + (lineHeight * 4));
     drawRow("IBAN:", formData.iban, startY + (lineHeight * 5));
     
-    // Images
     const imgY = startY + (lineHeight * 7);
     ctx.font = 'bold 24px Arial';
     ctx.fillText("CNIC Front:", 100, imgY - 20);
@@ -173,19 +147,40 @@ export const Nomination: React.FC = () => {
 
     const img1 = new Image(); img1.src = URL.createObjectURL(cnicFront);
     await new Promise(r => img1.onload = r);
-    ctx.drawImage(img1, 100, imgY, 500, 315); // Standard Card Aspect Ratio
+    ctx.drawImage(img1, 100, imgY, 500, 315);
     
     const img2 = new Image(); img2.src = URL.createObjectURL(cnicBack);
     await new Promise(r => img2.onload = r);
     ctx.drawImage(img2, 640, imgY, 500, 315);
 
-    // Footer
-    ctx.font = 'italic 18px Arial';
-    ctx.textAlign = 'center';
+    ctx.font = 'italic 18px Arial'; ctx.textAlign = 'center';
     ctx.fillText("Generated via Bhatti's AI Tools", 620, 1700);
 
     setGeneratedA4(canvas.toDataURL('image/jpeg'));
     setStep('preview');
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!generatedA4) return;
+    setIsDownloading(true);
+    const element = document.createElement('div');
+    element.innerHTML = `<img src="${generatedA4}" style="width: 100%; height: auto;" />`;
+    Object.assign(element.style, { width: '210mm', minHeight: '297mm', backgroundColor: '#ffffff', position: 'fixed', left: '0', top: '0', zIndex: '-9999' });
+    document.body.appendChild(element);
+
+    try {
+        const options = {
+            margin: 0,
+            filename: `nomination_${formData.name.replace(/\s+/g, '_')}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        await html2pdf().set(options).from(element).save();
+    } finally {
+        document.body.removeChild(element);
+        setIsDownloading(false);
+    }
   };
 
   return (
@@ -210,48 +205,10 @@ export const Nomination: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <InputGroup label="Full Name" icon={<User size={14}/>} name="name" value={formData.name} onChange={handleInputChange} placeholder="Muhammad Ali" />
                     <InputGroup label="Father Name" icon={<User size={14}/>} name="fatherName" value={formData.fatherName} onChange={handleInputChange} placeholder="Ahmed Ali" />
-                    
-                    <InputGroup 
-                        label="Mobile Number (03xx xxxxxxx)" 
-                        icon={<Smartphone size={14}/>} 
-                        name="mobile" 
-                        value={formData.mobile} 
-                        onChange={handleInputChange} 
-                        placeholder="0300 1234567" 
-                    />
-                    
-                    <InputGroup 
-                        label="Gmail Address" 
-                        icon={<Mail size={14}/>} 
-                        name="gmail" 
-                        value={formData.gmail} 
-                        onChange={handleInputChange} 
-                        placeholder="email@gmail.com" 
-                        error={validationErrors.gmail}
-                        success={validationSuccess.gmail}
-                    />
-                    
-                    <InputGroup 
-                        label="Bank Name" 
-                        icon={<Landmark size={14}/>} 
-                        name="bankName" 
-                        value={formData.bankName} 
-                        onChange={handleInputChange} 
-                        placeholder="Meezan Bank" 
-                        error={validationErrors.bankName}
-                        success={validationSuccess.bankName}
-                    />
-                    
-                    <InputGroup 
-                        label="IBAN Number" 
-                        icon={<CreditCard size={14}/>} 
-                        name="iban" 
-                        value={formData.iban} 
-                        onChange={handleInputChange} 
-                        placeholder="PK36 MEZN 1234 5678 ..." 
-                        error={validationErrors.iban}
-                        success={validationSuccess.iban}
-                    />
+                    <InputGroup label="Mobile Number" icon={<Smartphone size={14}/>} name="mobile" value={formData.mobile} onChange={handleInputChange} placeholder="0300 1234567" />
+                    <InputGroup label="Gmail Address" icon={<Mail size={14}/>} name="gmail" value={formData.gmail} onChange={handleInputChange} placeholder="email@gmail.com" error={validationErrors.gmail} success={validationSuccess.gmail} />
+                    <InputGroup label="Bank Name" icon={<Landmark size={14}/>} name="bankName" value={formData.bankName} onChange={handleInputChange} placeholder="Meezan Bank" error={validationErrors.bankName} success={validationSuccess.bankName} />
+                    <InputGroup label="IBAN Number" icon={<CreditCard size={14}/>} name="iban" value={formData.iban} onChange={handleInputChange} placeholder="PK36 MEZN 1234 5678 ..." error={validationErrors.iban} success={validationSuccess.iban} />
                 </div>
             </div>
 
@@ -260,26 +217,16 @@ export const Nomination: React.FC = () => {
                      <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <Upload className="text-cyan-400" size={24} /> Upload CNIC
                      </h3>
-                     <div 
-                        className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center cursor-pointer hover:border-cyan-400 hover:bg-cyan-400/5 transition-all" 
-                        onClick={() => document.getElementById('front-up')?.click()}
-                     >
+                     <div className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center cursor-pointer hover:border-cyan-400 hover:bg-cyan-400/5 transition-all" onClick={() => document.getElementById('front-up')?.click()}>
                          <input id="front-up" type="file" onChange={(e) => handleFileChange(e, 'front')} className="hidden" accept="image/*" />
                          {cnicFront ? <div className="text-green-400 flex items-center justify-center gap-2 font-bold"><CheckCircle size={16}/> Front Uploaded</div> : <span className="text-slate-400 text-sm">Upload Front Side</span>}
                      </div>
-                     <div 
-                        className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center cursor-pointer hover:border-cyan-400 hover:bg-cyan-400/5 transition-all" 
-                        onClick={() => document.getElementById('back-up')?.click()}
-                     >
+                     <div className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center cursor-pointer hover:border-cyan-400 hover:bg-cyan-400/5 transition-all" onClick={() => document.getElementById('back-up')?.click()}>
                          <input id="back-up" type="file" onChange={(e) => handleFileChange(e, 'back')} className="hidden" accept="image/*" />
                          {cnicBack ? <div className="text-green-400 flex items-center justify-center gap-2 font-bold"><CheckCircle size={16}/> Back Uploaded</div> : <span className="text-slate-400 text-sm">Upload Back Side</span>}
                      </div>
                 </div>
-                <button 
-                    onClick={generateA4Page} 
-                    disabled={isValidating}
-                    className="w-full py-5 bg-cyan-400 hover:bg-[#00c2cc] text-black font-bold rounded-xl text-lg shadow-neon transition-all hover:-translate-y-1 flex items-center justify-center gap-2 disabled:opacity-50"
-                >
+                <button onClick={generateA4Page} disabled={isValidating} className="w-full py-5 bg-cyan-400 hover:bg-[#00c2cc] text-black font-bold rounded-xl text-lg shadow-neon transition-all hover:-translate-y-1 flex items-center justify-center gap-2 disabled:opacity-50">
                     {isValidating ? <Loader2 className="animate-spin"/> : <ArrowRight size={20} />}
                     {isValidating ? 'VALIDATING...' : 'GENERATE FORM'}
                 </button>
@@ -292,8 +239,11 @@ export const Nomination: React.FC = () => {
             <div className="bg-white p-2 rounded-xl shadow-2xl border-4 border-slate-900 overflow-hidden">
                 <img src={generatedA4} className="max-w-full h-auto rounded-lg shadow-inner max-h-[70vh]" />
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap justify-center gap-4">
                 <button onClick={() => setStep('form')} className="px-6 py-3 border border-white/10 rounded-xl text-white hover:bg-white/5 flex items-center gap-2 font-bold"><RefreshCw size={20}/> Edit</button>
+                <button onClick={handleDownloadPdf} disabled={isDownloading} className="px-8 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 transition-all">
+                    {isDownloading ? <Loader2 className="animate-spin"/> : <FileType size={20}/>} Download PDF
+                </button>
                 <button onClick={() => { const l = document.createElement('a'); l.href=generatedA4; l.download='nomination_form.jpg'; l.click(); }} className="px-8 py-3 bg-cyan-400 hover:bg-[#00c2cc] text-black rounded-xl font-bold shadow-neon flex items-center gap-2"><Download size={20}/> Download JPG</button>
             </div>
         </div>

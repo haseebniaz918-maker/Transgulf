@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Database, Save, FileSpreadsheet, Search, Trash2, MapPin, Phone, Briefcase, User, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Database, Save, FileSpreadsheet, Search, Trash2, MapPin, Phone, Briefcase, User, Upload, AlertCircle, CheckCircle2, Calendar } from 'lucide-react';
 
 interface WorkerEntry {
   id: string;
   date: string;
   name: string;
   fatherName: string;
+  dob: string;
   age: string;
   phone1: string;
   phone2: string;
@@ -64,6 +65,7 @@ export const DataEntries: React.FC = () => {
   const [formData, setFormData] = useState<Omit<WorkerEntry, 'id' | 'date'>>({
     name: '',
     fatherName: '',
+    dob: '',
     age: '',
     phone1: '',
     phone2: '',
@@ -106,6 +108,18 @@ export const DataEntries: React.FC = () => {
     return `${raw.slice(0, 4)} ${raw.slice(4, 11)}`;
   };
 
+  const calculateAge = (dob: string) => {
+    if(!dob) return '';
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age.toString();
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
@@ -114,6 +128,9 @@ export const DataEntries: React.FC = () => {
         if (formatted.length <= 12) { // 11 digits + 1 space
              setFormData(prev => ({ ...prev, [name]: formatted }));
         }
+    } else if (name === 'dob') {
+        const calculatedAge = calculateAge(value);
+        setFormData(prev => ({ ...prev, dob: value, age: calculatedAge }));
     } else if (name === 'age') {
         // Enforce max 3 chars
         if (value.length <= 3) setFormData(prev => ({ ...prev, age: value }));
@@ -180,7 +197,7 @@ export const DataEntries: React.FC = () => {
     setTimeout(() => setShowSaveAnimation(false), 2000);
 
     setFormData({
-        name: '', fatherName: '', age: '', phone1: '', phone2: '', 
+        name: '', fatherName: '', dob: '', age: '', phone1: '', phone2: '', 
         trade: '', province: '', district: '', city: '', remarks: ''
     });
   };
@@ -213,6 +230,7 @@ export const DataEntries: React.FC = () => {
                   date: row['Date'] || row['date'] || new Date().toISOString().split('T')[0],
                   name: row['Name'] || row['name'] || '',
                   fatherName: row['Father Name'] || row['fatherName'] || '',
+                  dob: row['DOB'] || row['dob'] || '',
                   age: row['Age'] || row['age'] || '',
                   phone1: row['Contact 1'] || row['phone1'] || '',
                   phone2: row['Contact 2'] || row['phone2'] || '',
@@ -243,6 +261,7 @@ export const DataEntries: React.FC = () => {
           "Date": entry.date,
           "Name": entry.name,
           "Father Name": entry.fatherName,
+          "DOB": entry.dob,
           "Age": entry.age,
           "Contact 1": entry.phone1,
           "Contact 2": entry.phone2,
@@ -276,6 +295,7 @@ export const DataEntries: React.FC = () => {
         { wch: 12 }, // Date
         { wch: 20 }, // Name
         { wch: 20 }, // Father
+        { wch: 12 }, // DOB
         { wch: 6 },  // Age
         { wch: 15 }, // Phone 1
         { wch: 15 }, // Phone 2
@@ -355,18 +375,26 @@ export const DataEntries: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-[1fr_2fr] gap-4">
+                <div className="grid grid-cols-[2fr_1fr] gap-4">
                     <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Age (&lt;100)</label>
-                        <input name="age" type="number" value={formData.age} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="25" max={99} />
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Date of Birth</label>
+                        <div className="relative">
+                            <input name="dob" type="date" value={formData.dob} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-cyan-400 focus:outline-none" />
+                            <Calendar size={16} className="absolute left-3 top-2.5 text-slate-500" />
+                        </div>
                     </div>
                     <div className="flex flex-col gap-1">
-                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone 1 (03xx) *</label>
-                         <div className="relative">
-                            <input name="phone1" value={formData.phone1} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="0300 1234567" maxLength={12} />
-                            <Phone size={16} className="absolute left-3 top-2.5 text-slate-500" />
-                         </div>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Age</label>
+                        <input name="age" type="number" value={formData.age} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="Auto" max={99} />
                     </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone 1 (03xx) *</label>
+                     <div className="relative">
+                        <input name="phone1" value={formData.phone1} onChange={handleInputChange} className="w-full bg-slate-950 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:border-cyan-400 focus:outline-none" placeholder="0300 1234567" maxLength={12} />
+                        <Phone size={16} className="absolute left-3 top-2.5 text-slate-500" />
+                     </div>
                 </div>
 
                 {/* Second Phone Number */}
@@ -399,12 +427,12 @@ export const DataEntries: React.FC = () => {
                          </select>
                          <select name="district" value={formData.district} onChange={handleInputChange} disabled={!formData.province} className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-400 outline-none disabled:opacity-50">
                              <option value="">Select District</option>
-                             {formData.province && Object.keys(LOCATIONS[formData.province]).map(d => <option key={d} value={d}>{d}</option>)}
+                             {formData.province && LOCATIONS[formData.province] && Object.keys(LOCATIONS[formData.province]).map(d => <option key={d} value={d}>{d}</option>)}
                          </select>
                     </div>
                     <select name="city" value={formData.city} onChange={handleInputChange} disabled={!formData.district} className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-400 outline-none disabled:opacity-50">
                          <option value="">Select City</option>
-                         {formData.district && LOCATIONS[formData.province][formData.district].map(c => <option key={c} value={c}>{c}</option>)}
+                         {formData.district && LOCATIONS[formData.province] && LOCATIONS[formData.province][formData.district] && LOCATIONS[formData.province][formData.district].map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                 </div>
 
