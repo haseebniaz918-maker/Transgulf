@@ -40,7 +40,7 @@ export default function App() {
       {!introComplete && <Intro onComplete={() => setIntroComplete(true)} />}
       
       <div 
-        className={`min-h-screen flex flex-col transition-opacity duration-1000 ${introComplete ? 'opacity-100' : 'opacity-0'}`}
+        className={`min-h-screen flex flex-col transition-opacity duration-1000 bg-theme-bg text-theme-text ${introComplete ? 'opacity-100' : 'opacity-0'}`}
       >
         <Navbar 
           currentSection={activeSection} 
@@ -48,14 +48,14 @@ export default function App() {
         />
         
         <main className="relative flex-1">
-          <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-cyan-400/10 blur-[120px] rounded-full pointer-events-none z-0 mix-blend-screen"></div>
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/10 blur-[120px] rounded-full pointer-events-none z-0 mix-blend-screen dark:mix-blend-lighten"></div>
           
           <div className="relative z-10 p-6 max-w-[1600px] mx-auto animate-fade-in">
             {renderContent()}
           </div>
         </main>
 
-        <footer className="mt-auto border-t border-white/5 py-8 text-center text-sm text-slate-500">
+        <footer className="mt-auto border-t border-black/5 dark:border-white/5 py-8 text-center text-sm opacity-50">
           &copy; 2024 Bhatti's AI Tools. All rights reserved.
         </footer>
       </div>

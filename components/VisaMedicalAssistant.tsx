@@ -1,3 +1,5 @@
+
+// Fix: Use direct process.env.API_KEY and follow search grounding rules (no JSON parsing of response.text)
 import React, { useState, useEffect } from 'react';
 import { 
     ShieldCheck, Search, Loader2, User, Globe, FileCheck, ExternalLink, 
@@ -132,7 +134,8 @@ export const VisaMedicalAssistant: React.FC = () => {
     const currentStepName = getStepName(activeStep);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      // Fix: Direct initialization from process.env.API_KEY
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `
         Analyze the provided portal text for ${currentStepName}.
         IDENTIFY: Status (FIT, UNFIT, PASSED, FAILED, ISSUED, REJECTED).
@@ -180,30 +183,39 @@ export const VisaMedicalAssistant: React.FC = () => {
     setIsSearching(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-      const prompt = `Find official check URL for ${getStepName(stepIndex)} for Passport ${passportNumber}. 
-      If CAPTCHA is expected, return status "CAPTCHA REQUIRED".
-      JSON format: { "status": "string", "sourceUrl": "string" }`;
+      // Fix: Direct initialization from process.env.API_KEY
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = `Find the official portal link for ${getStepName(stepIndex)} and specific instructions to check status for Passport ${passportNumber}. 
+      Return info as helpful instructions.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: prompt,
-        config: { tools: [{ googleSearch: {} }], responseMimeType: "application/json" }
+        config: { tools: [{ googleSearch: {} }] }
       });
 
-      const res = JSON.parse(response.text || "{}");
+      // Fix: Do not attempt to parse response.text as JSON when using googleSearch tool as per guidelines.
+      // Extract grounding URLs instead.
+      const statusInfo = response.text || "Manual verification required.";
+      const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+      const firstUrl = groundingChunks?.find(chunk => chunk.web)?.web?.uri || '';
+
       const key = stepIndex === 0 ? 'wafid' : stepIndex === 1 ? 'takamol' : 'enjaz';
       
       setAuditData(prev => ({
         ...prev,
         [key]: {
           ...prev[key as keyof typeof auditData],
-          status: res.status || 'CAPTCHA REQUIRED',
-          sourceUrl: res.sourceUrl || '',
+          status: 'CAPTCHA REQUIRED',
+          details: statusInfo,
+          sourceUrl: firstUrl,
           verified: false,
           failed: false
         }
       }));
+    } catch (error) {
+      console.error("Search Grounding Error:", error);
+      alert("Failed to reach verification gateway.");
     } finally {
       setIsSearching(false);
     }

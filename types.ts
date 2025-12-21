@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export enum Section {
@@ -12,6 +13,15 @@ export enum Section {
   IMAGE_TOOLS = 'IMAGE_TOOLS',
   CODE_STUDIO = 'CODE_STUDIO',
   CONVERTER = 'CONVERTER',
+}
+
+export interface ThemePalette {
+  id: string;
+  name: string;
+  primary: string;
+  secondary: string;
+  bg: string;
+  text: string;
 }
 
 export interface ToolDef {

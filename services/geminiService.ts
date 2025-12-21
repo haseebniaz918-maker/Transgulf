@@ -58,7 +58,6 @@ export const generateText = async (prompt: string, context?: string): Promise<st
   }
 };
 
-// Fix: Added missing generateImageDescription function for vision features
 export const generateImageDescription = async (base64: string, mimeType: string): Promise<string> => {
   try {
     const ai = getClient();
@@ -78,7 +77,6 @@ export const generateImageDescription = async (base64: string, mimeType: string)
   }
 };
 
-// Fix: Added missing generateEnhancedDocument function for DocuScan
 export const generateEnhancedDocument = async (base64: string, mimeType: string, instruction: string): Promise<string[]> => {
   try {
     const ai = getClient();
@@ -206,30 +204,58 @@ export const generateCvHtml = async (cvData: any, userInstruction: string = ""):
   return text.replace(/\[\[PHOTO_PLACEHOLDER\]\]/g, finalPhoto);
 };
 
-// Fix: Added missing generateAdHtml function for recruitment ads
 export const generateAdHtml = async (adData: any, customPrompt: string): Promise<string> => {
   try {
     const ai = getClient();
-    const prompt = `
-      ACT AS A PROFESSIONAL GRAPHIC DESIGNER AND AD ARCHITECT.
+    
+    // Step 1: Generate a professional image for the role using gemini-2.5-flash-image
+    const primaryRole = adData.jobs[0]?.title || adData.country;
+    const imagePrompt = `A high-quality, professional, and photorealistic recruitment image of a ${primaryRole} in a modern workspace. 1080p, square aspect ratio, recruitment agency style, clean background.`;
+    
+    const imgResponse = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: imagePrompt,
+      config: {
+        imageConfig: {
+          aspectRatio: "1:1"
+        }
+      }
+    });
+
+    let base64Image = '';
+    if (imgResponse.candidates?.[0]?.content?.parts) {
+      for (const part of imgResponse.candidates[0].content.parts) {
+        if (part.inlineData?.data) {
+          base64Image = `data:image/png;base64,${part.inlineData.data}`;
+          break;
+        }
+      }
+    }
+
+    // Step 2: Generate the Ad HTML with the injected image
+    const htmlPrompt = `
+      ACT AS A PROFESSIONAL GRAPHIC DESIGNER.
       MISSION: Create a high-fidelity recruitment ad in HTML format.
       DATA: ${JSON.stringify(adData)}
-      USER INSTRUCTION: ${customPrompt}
+      INJECTED IMAGE: Use the placeholder [[BG_IMAGE]] for the background/hero image.
+      USER CUSTOM INSTRUCTION: ${customPrompt}
 
       GUIDELINES:
       - 1080px x 1080px (Square).
-      - Use modern typography and premium branding colors.
-      - Ensure all ad data is presented clearly.
-      - Use inline styles.
+      - SELECT A UNIQUE, MODERN TEMPLATE (Vary layout, typography, and color schemes based on a seed).
+      - Ensure all ad data (positions, salary, benefits) is presented in high-contrast blocks.
+      - Use inline styles for everything.
+      - IF LANGUAGE IS "Both", include both English and Urdu translations for all job details.
       - RETURN RAW HTML STRING ONLY.
     `;
 
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: prompt,
+      contents: htmlPrompt,
     });
 
-    return (response.text || "").replace(/^```html/, "").replace(/```$/, "").trim();
+    let html = (response.text || "").replace(/^```html/, "").replace(/```$/, "").trim();
+    return html.replace(/\[\[BG_IMAGE\]\]/g, base64Image || 'https://via.placeholder.com/1080x1080?text=Recruitment+Ad');
   } catch (error) {
     console.error("Gemini Ad Gen Error:", error);
     throw new Error("Failed to generate ad HTML.");
